@@ -84,7 +84,14 @@ export default function MealList() {
           <div className="ion-padding">No meals found</div>
         ) : (
           <>
-            <h2 style={{ textTransform: 'capitalize', marginBottom: 8 }}>{selectedMeal}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <h2 style={{ textTransform: 'capitalize', margin: 0 }}>{selectedMeal}</h2>
+              {meals[selectedMeal]?.time && (
+                <IonNote style={{ fontSize: '0.9em', marginLeft: 16 }}>
+                  {meals[selectedMeal].time}
+                </IonNote>
+              )}
+            </div>
             {(!foods || foods.length === 0) ? (
               <IonNote>No foods added</IonNote>
             ) : (
