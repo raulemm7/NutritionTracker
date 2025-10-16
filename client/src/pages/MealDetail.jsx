@@ -30,7 +30,7 @@ import axios from 'axios';
 
 export default function MealDetail() {
   const { date, meal } = useParams();
-  const history = useHistory(); // <-- schimbat
+  const history = useHistory(); 
   const [mealData, setMealData] = useState(null);
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +107,7 @@ export default function MealDetail() {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonButton onClick={() => history.push(`/meals/${date}`)}> {/* <-- schimbat BackButton */}
+            <IonButton onClick={() => history.push(`/meals/${date}`)}> 
               Back
             </IonButton>
           </IonButtons>
