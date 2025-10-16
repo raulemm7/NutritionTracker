@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 import {
   IonApp,
   IonRouterOutlet,
@@ -16,19 +16,15 @@ import {
   IonModal,
   IonPage,
   IonContent,
-} from "@ionic/react";
-import { IonReactRouter } from "@ionic/react-router";
-import { useHistory, useLocation, Redirect, Route } from "react-router-dom";
-import {
-  calendar,
-  restaurantOutline,
-  listOutline,
-  notificationsOutline,
-} from "ionicons/icons";
-import FoodList from "./pages/FoodList";
-import MealList from "./pages/MealList";
-import MealDetail from "./pages/MealDetail";
-import Notifications from "./components/Notifications";
+  IonToast,
+} from '@ionic/react';
+import { IonReactRouter } from '@ionic/react-router';
+import { useHistory, useLocation, Redirect, Route } from 'react-router-dom';
+import { calendar, restaurantOutline, listOutline, notificationsOutline } from 'ionicons/icons';
+import FoodList from './pages/FoodList';
+import MealList from './pages/MealList';
+import MealDetail from './pages/MealDetail';
+import Notifications from './components/Notifications';
 
 function AppContent() {
   const location = useLocation();
@@ -41,6 +37,10 @@ function AppContent() {
   );
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showToast, setShowToast] = useState(true); // Show on entry
+  const [toastMessage, setToastMessage] = useState(isOnline ? 'You are online' : 'You are offline');
+  const [toastColor, setToastColor] = useState(isOnline ? 'success' : 'danger');
+  const toastTimeout = useRef(null);
   const history = useHistory();
 
   // Sync selectedDate with URL changes
@@ -50,14 +50,49 @@ function AppContent() {
     setSelectedDate(urlDate);
   }, [location.pathname]);
 
+  // Show toast on entry for 3s if online, else stay until online
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    if (isOnline) {
+      setToastMessage('You are online');
+      setToastColor('success');
+      setShowToast(true);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+    } else {
+      setToastMessage('You are offline');
+      setToastColor('danger');
+      setShowToast(true);
+      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    }
+    // Cleanup on unmount
+    return () => {
+      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    };
+    // Only run on mount
+    // eslint-disable-next-line
+  }, []);
+
+  // Listen for online/offline changes
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setToastMessage('You are online');
+      setToastColor('success');
+      setShowToast(true);
+      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setToastMessage('You are offline');
+      setToastColor('danger');
+      setShowToast(true);
+      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (toastTimeout.current) clearTimeout(toastTimeout.current);
     };
   }, []);
 
@@ -76,11 +111,6 @@ function AppContent() {
       <IonHeader>
         <IonToolbar>
           <IonTitle style={{ paddingInlineStart: 20, textAlign: 'left' }}>Nutrition Tracker</IonTitle>
-          <div style={{ position: 'absolute', right: 120, top: 0, height: '100%', display: 'flex', alignItems: 'center' }}>
-            <IonLabel color={isOnline ? 'success' : 'danger'} style={{ fontWeight: 'bold', fontSize: 14 }}>
-              {isOnline ? 'Online' : 'Offline'}
-            </IonLabel>
-          </div>
           <IonButtons slot="end">
             <IonButton onClick={() => setIsDateOpen(true)}>
               <IonIcon icon={calendar} slot="start" />
@@ -135,6 +165,18 @@ function AppContent() {
             />
           </IonContent>
         </IonModal>
+
+        {/* Network status pop-up */}
+        <IonToast
+          isOpen={showToast}
+          message={toastMessage}
+          color={toastColor}
+          duration={isOnline ? 3000 : undefined}
+          position="top"
+          animated={true}
+          onDidDismiss={() => setShowToast(false)}
+          style={{ fontWeight: 'bold', fontSize: 16 }}
+        />
       </IonContent>
     </IonPage>
   );
