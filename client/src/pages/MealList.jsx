@@ -45,62 +45,55 @@ export default function MealList() {
 
   return (
     <IonContent>
-      <div style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
-        <div style={{ minWidth: 120, borderRight: '1px solid #eee', background: '#fafafa', paddingTop: 16 }}>
-          <IonList style={{ height: '100%' }}>
-            {mealOptions.map(opt => (
-              <IonItem
-                key={opt.key}
-                button
-                color={selectedMeal === opt.key ? 'primary' : ''}
-                onClick={() => setSelectedMeal(opt.key)}
-              >
-                <IonLabel>{opt.label}</IonLabel>
+      <div style={{ margin: '20px 16px 24px 16px' }}>
+        <IonSegment value={selectedMeal} onIonChange={e => setSelectedMeal(e.detail.value)}>
+          {mealOptions.map(opt => (
+            <IonSegmentButton key={opt.key} value={opt.key}>
+              {opt.label}
+            </IonSegmentButton>
+          ))}
+        </IonSegment>
+      </div>
+      <div style={{ padding: 16 }}>
+        {loading ? (
+          <IonList>
+            {[1, 2, 3].map(i => (
+              <IonItem key={i}>
+                <IonLabel>
+                  <IonSkeletonText animated style={{ width: '60%' }} />
+                </IonLabel>
               </IonItem>
             ))}
           </IonList>
-        </div>
-        <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
-          {loading ? (
-            <IonList>
-              {[1, 2, 3].map(i => (
-                <IonItem key={i}>
-                  <IonLabel>
-                    <IonSkeletonText animated style={{ width: '60%' }} />
-                  </IonLabel>
-                </IonItem>
-              ))}
-            </IonList>
-          ) : !meals ? (
-            <div className="ion-padding">No meals found</div>
-          ) : (
-            <>
-              <h2 style={{ textTransform: 'capitalize', marginBottom: 8 }}>{selectedMeal}</h2>
-              {(!foods || foods.length === 0) ? (
-                <IonNote>No foods added</IonNote>
-              ) : (
-                <>
-                  <IonBadge color="primary" style={{ marginBottom: '8px' }}>
-                    {getTotalCalories(foods)} kcal
-                  </IonBadge>
-                  <IonList lines="none">
-                    {foods.map((food, idx) => (
-                      <IonItem key={idx}>
-                        <IonLabel>
-                          {food.name}
-                          <p>
-                            {food.calories * food.quantity} kcal
-                          </p>
-                        </IonLabel>
-                        <IonNote slot="end">x{food.quantity}</IonNote>
-                      </IonItem>
-                    ))}
-                  </IonList>
-                </>
-              )}
-            </>
-          )}
-        </div>
+        ) : !meals ? (
+          <div className="ion-padding">No meals found</div>
+        ) : (
+          <>
+            <h2 style={{ textTransform: 'capitalize', marginBottom: 8 }}>{selectedMeal}</h2>
+            {(!foods || foods.length === 0) ? (
+              <IonNote>No foods added</IonNote>
+            ) : (
+              <>
+                <IonBadge color="primary" style={{ marginBottom: '8px' }}>
+                  {getTotalCalories(foods)} kcal
+                </IonBadge>
+                <IonList lines="none">
+                  {foods.map((food, idx) => (
+                    <IonItem key={idx}>
+                      <IonLabel>
+                        {food.name}
+                        <p>
+                          {food.calories * food.quantity} kcal
+                        </p>
+                      </IonLabel>
+                      <IonNote slot="end">x{food.quantity}</IonNote>
+                    </IonItem>
+                  ))}
+                </IonList>
+              </>
+            )}
+          </>
+        )}
       </div>
     </IonContent>
   );
