@@ -1,0 +1,27 @@
+{
+  "name": "nutrition-client",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ionic/react": "^7.5.0",
+    "@ionic/react-router": "^7.5.0",
+    "axios": "^1.4.0",
+    "ionicons": "^7.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router": "^5.3.4",
+    "react-router-dom": "^5.3.4",
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "@types/react-router": "^5.1.20",
+    "@types/react-router-dom": "^5.3.3",
+    "@vitejs/plugin-react": "^5.0.1",
+    "vite": "^5.0.0"
+  }
+}
