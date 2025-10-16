@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   IonContent,
   IonList,
@@ -10,56 +10,66 @@ import {
   IonBadge,
   IonSegment,
   IonSegmentButton,
-  IonToast
-} from '@ionic/react';
-import axios from 'axios';
-import { io } from 'socket.io-client';
+  IonToast,
+} from "@ionic/react";
+import axios from "axios";
+import { io } from "socket.io-client";
 
 export default function MealList() {
   const { date } = useParams();
   const [meals, setMeals] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedMeal, setSelectedMeal] = useState('breakfast');
+  const [selectedMeal, setSelectedMeal] = useState("breakfast");
   const [socket, setSocket] = useState(null);
   const [notification, setNotification] = useState({
     isOpen: false,
-    message: ''
+    message: "",
   });
 
   useEffect(() => {
-    const newSocket = io('http://localhost:4000');
+    const newSocket = io("http://localhost:4000");
     setSocket(newSocket);
 
-    newSocket.on('userDateChanged', (data) => {
-      setNotification({
-        isOpen: true,
-        message: `Another user is viewing meals for ${data.date}`
-      });
-    });
+    const handleUserDateChanged = (data) => {
+      // Verifică dacă notificarea este de la alt user (nu de la tine)
+      if (data.userId !== newSocket.id) {
+        setNotification({
+          isOpen: true,
+          message: `Another user is viewing meals for ${data.date}`,
+        });
+      }
+    };
 
-    return () => newSocket.disconnect();
+    newSocket.on("userDateChanged", handleUserDateChanged);
+
+    return () => {
+      newSocket.off("userDateChanged", handleUserDateChanged);
+      newSocket.disconnect();
+    };
   }, []);
 
   // Reset state when date changes
   // Reset all state and fetch new data when date changes
   useEffect(() => {
-    console.log('Date changed to:', date);
-    
+    console.log("Date changed to:", date);
+
     const fetchMeals = async () => {
       try {
         setLoading(true);
         setMeals(null);
-        setSelectedMeal('breakfast');
-        
-        const response = await axios.get(`http://localhost:4000/api/meals/${date}`);
-        console.log('Fetched meals:', response.data);
+        setSelectedMeal("breakfast");
+
+        const response = await axios.get(
+          `http://localhost:4000/api/meals/${date}`,
+        );
+        console.log("Fetched meals:", response.data);
         setMeals(response.data);
 
         if (socket) {
-          socket.emit('dateChange', date);
+          socket.emit("dateChange", date);
         }
       } catch (err) {
-        console.error('Error fetching meals:', err);
+        console.error("Error fetching meals:", err);
         setMeals(null);
       } finally {
         setLoading(false);
@@ -67,18 +77,18 @@ export default function MealList() {
     };
 
     fetchMeals();
-    }, [date, socket]);
+  }, [date]);
 
   const getTotalCalories = (foods) =>
-    foods.reduce((sum, f) => sum + (f.calories * f.quantity), 0);
+    foods.reduce((sum, f) => sum + f.calories * f.quantity, 0);
 
   const mealOptions = [
-    { key: 'breakfast', label: 'Breakfast' },
-    { key: 'lunch', label: 'Lunch' },
-    { key: 'dinner', label: 'Dinner' }
+    { key: "breakfast", label: "Breakfast" },
+    { key: "lunch", label: "Lunch" },
+    { key: "dinner", label: "Dinner" },
   ];
 
-  let foods = []; 
+  let foods = [];
   if (meals && meals[selectedMeal] && meals[selectedMeal].foods) {
     foods = meals[selectedMeal].foods;
   }
@@ -87,14 +97,17 @@ export default function MealList() {
     <IonContent>
       <IonToast
         isOpen={notification.isOpen}
-        onDidDismiss={() => setNotification({ isOpen: false, message: '' })}
+        onDidDismiss={() => setNotification({ isOpen: false, message: "" })}
         message={notification.message}
         duration={3000}
         position="top"
       />
-      <div style={{ margin: '20px 16px 24px 16px' }}>
-        <IonSegment value={selectedMeal} onIonChange={e => setSelectedMeal(e.detail.value)}>
-          {mealOptions.map(opt => (
+      <div style={{ margin: "20px 16px 24px 16px" }}>
+        <IonSegment
+          value={selectedMeal}
+          onIonChange={(e) => setSelectedMeal(e.detail.value)}
+        >
+          {mealOptions.map((opt) => (
             <IonSegmentButton key={opt.key} value={opt.key}>
               {opt.label}
             </IonSegmentButton>
@@ -104,10 +117,10 @@ export default function MealList() {
       <div style={{ padding: 16 }}>
         {loading ? (
           <IonList>
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <IonItem key={i}>
                 <IonLabel>
-                  <IonSkeletonText animated style={{ width: '60%' }} />
+                  <IonSkeletonText animated style={{ width: "60%" }} />
                 </IonLabel>
               </IonItem>
             ))}
@@ -116,19 +129,28 @@ export default function MealList() {
           <div className="ion-padding">No meals found</div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <h2 style={{ textTransform: 'capitalize', margin: 0 }}>{selectedMeal}</h2>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <h2 style={{ textTransform: "capitalize", margin: 0 }}>
+                {selectedMeal}
+              </h2>
               {meals[selectedMeal]?.time && (
-                <IonNote style={{ fontSize: '0.9em', marginLeft: 16 }}>
+                <IonNote style={{ fontSize: "0.9em", marginLeft: 16 }}>
                   {meals[selectedMeal].time}
                 </IonNote>
               )}
             </div>
-            {(!foods || foods.length === 0) ? (
+            {!foods || foods.length === 0 ? (
               <IonNote>No foods added</IonNote>
             ) : (
               <>
-                <IonBadge color="primary" style={{ marginBottom: '8px' }}>
+                <IonBadge color="primary" style={{ marginBottom: "8px" }}>
                   {getTotalCalories(foods)} kcal
                 </IonBadge>
                 <IonList lines="none">
@@ -136,9 +158,7 @@ export default function MealList() {
                     <IonItem key={idx}>
                       <IonLabel>
                         {food.name}
-                        <p>
-                          {food.calories * food.quantity} kcal
-                        </p>
+                        <p>{food.calories * food.quantity} kcal</p>
                       </IonLabel>
                       <IonNote slot="end">x{food.quantity}</IonNote>
                     </IonItem>

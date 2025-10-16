@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { 
+import React, { useEffect, useState } from "react";
+import {
   IonList,
   IonItem,
   IonLabel,
@@ -9,61 +9,89 @@ import {
   IonToolbar,
   IonTitle,
   IonContent,
-  IonBadge
-} from '@ionic/react'
-import { 
+  IonBadge,
+} from "@ionic/react";
+import {
   informationCircle,
   checkmarkCircle,
   warningOutline,
-  notifications as notifyIcon
-} from 'ionicons/icons'
-import { io } from 'socket.io-client'
+  notifications as notifyIcon,
+} from "ionicons/icons";
+import { io } from "socket.io-client";
 
 const getIconForType = (type) => {
-  switch(type) {
-    case 'notification': return warningOutline;
-    case 'new-log': return checkmarkCircle;
-    case 'welcome': return notifyIcon;
-    default: return informationCircle;
+  switch (type) {
+    case "notification":
+      return warningOutline;
+    case "new-log":
+      return checkmarkCircle;
+    case "welcome":
+      return notifyIcon;
+    case "date-change":
+      return informationCircle;
+    default:
+      return informationCircle;
   }
 };
 
 export default function Notifications() {
-  const [events, setEvents] = useState([])
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    const socket = io('http://localhost:4000')
-    socket.on('connect', () => 
-      setEvents(e => [{ 
-        type: 'system', 
-        message: 'Connected to server',
-        timestamp: new Date().toISOString()
-      }, ...e])
-    )
-    socket.on('welcome', (p) => 
-      setEvents(e => [{ 
-        type: 'welcome', 
-        message: p.message,
-        timestamp: new Date().toISOString()
-      }, ...e])
-    )
-    socket.on('notification', (p) => 
-      setEvents(e => [{ 
-        type: 'notification', 
-        ...p,
-        timestamp: new Date().toISOString()
-      }, ...e])
-    )
-    socket.on('new-log', (p) => 
-      setEvents(e => [{ 
-        type: 'new-log', 
-        message: `New log: ${p.name} (${p.calories} kcal)`,
-        timestamp: new Date().toISOString()
-      }, ...e])
-    )
+    const socket = io("http://localhost:4000");
+    socket.on("connect", () =>
+      setEvents((e) => [
+        {
+          type: "system",
+          message: "Connected to server",
+          timestamp: new Date().toISOString(),
+        },
+        ...e,
+      ]),
+    );
+    socket.on("welcome", (p) =>
+      setEvents((e) => [
+        {
+          type: "welcome",
+          message: p.message,
+          timestamp: new Date().toISOString(),
+        },
+        ...e,
+      ]),
+    );
+    socket.on("notification", (p) =>
+      setEvents((e) => [
+        {
+          type: "notification",
+          ...p,
+          timestamp: new Date().toISOString(),
+        },
+        ...e,
+      ]),
+    );
+    socket.on("new-log", (p) =>
+      setEvents((e) => [
+        {
+          type: "new-log",
+          message: `New log: ${p.name} (${p.calories} kcal)`,
+          timestamp: new Date().toISOString(),
+        },
+        ...e,
+      ]),
+    );
+    socket.on("userDateChanged", (data) =>
+      setEvents((e) => [
+        {
+          type: "date-change",
+          message: `User ${data.userId.substring(0, 8)} changed date to ${data.date}`,
+          timestamp: new Date().toISOString(),
+        },
+        ...e,
+      ]),
+    );
 
-    return () => socket.disconnect()
-  }, [])
+    return () => socket.disconnect();
+  }, []);
 
   return (
     <>
@@ -75,35 +103,33 @@ export default function Notifications() {
 
       <IonContent>
         {events.length === 0 ? (
-        <div className="ion-padding ion-text-center">
-          <IonNote>No notifications yet</IonNote>
-        </div>
-      ) : (
-        <IonList>
-          {events.map((ev, idx) => (
-            <IonItem key={idx}>
-              <IonIcon 
-                icon={getIconForType(ev.type)} 
-                slot="start"
-                color={ev.type === 'notification' ? 'warning' : 'primary'}
-              />
-              <IonLabel>
-                {ev.message || ev.title}
-                <p>
-                  {new Date(ev.timestamp).toLocaleTimeString()}
-                </p>
-              </IonLabel>
-              <IonBadge 
-                color={ev.type === 'notification' ? 'warning' : 'primary'} 
-                slot="end"
-              >
-                {ev.type}
-              </IonBadge>
-            </IonItem>
-          ))}
-        </IonList>
-      )}
-          </IonContent>
+          <div className="ion-padding ion-text-center">
+            <IonNote>No notifications yet</IonNote>
+          </div>
+        ) : (
+          <IonList>
+            {events.map((ev, idx) => (
+              <IonItem key={idx}>
+                <IonIcon
+                  icon={getIconForType(ev.type)}
+                  slot="start"
+                  color={ev.type === "notification" ? "warning" : "primary"}
+                />
+                <IonLabel>
+                  {ev.message || ev.title}
+                  <p>{new Date(ev.timestamp).toLocaleTimeString()}</p>
+                </IonLabel>
+                <IonBadge
+                  color={ev.type === "notification" ? "warning" : "primary"}
+                  slot="end"
+                >
+                  {ev.type}
+                </IonBadge>
+              </IonItem>
+            ))}
+          </IonList>
+        )}
+      </IonContent>
     </>
-  )
+  );
 }
