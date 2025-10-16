@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IonApp,
   IonRouterOutlet,
@@ -18,7 +18,7 @@ import {
   IonContent
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { useHistory, Redirect, Route } from 'react-router-dom';
+import { useHistory, useLocation, Redirect, Route } from 'react-router-dom';
 import { calendar, restaurantOutline, listOutline, notificationsOutline } from 'ionicons/icons';
 import FoodList from './pages/FoodList';
 import MealList from './pages/MealList';
@@ -26,15 +26,30 @@ import MealDetail from './pages/MealDetail';
 import Notifications from './components/Notifications';
 
 function AppContent() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const location = useLocation();
+  function getDateFromPath(path) {
+    const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : new Date().toISOString().split('T')[0];
+  }
+  const [selectedDate, setSelectedDate] = useState(getDateFromPath(location.pathname));
   const [isDateOpen, setIsDateOpen] = useState(false);
   const history = useHistory();
 
+  // Sync selectedDate with URL changes
+  useEffect(() => {
+    const urlDate = getDateFromPath(location.pathname);
+    console.log('URL changed, new date:', urlDate);
+    setSelectedDate(urlDate);
+  }, [location.pathname]);
+
   const handleDateChange = (value) => {
     const date = value.split('T')[0];
+    console.log('Date selected:', date);
     setSelectedDate(date);
     setIsDateOpen(false);
-    history.push(`/meals/${date}`);
+    // Force a new route even if it's the same date
+    history.replace('/');
+    setTimeout(() => history.push(`/meals/${date}`), 0);
   };
 
   return (
@@ -55,7 +70,7 @@ function AppContent() {
         <IonTabs>
           <IonRouterOutlet>
             <Route exact path="/meals/:date">
-              <MealList />
+              <MealList key={selectedDate} />
             </Route>
             <Route exact path="/meals/:date/:meal">
               <MealDetail />
@@ -97,6 +112,7 @@ function AppContent() {
           </IonContent>
         </IonModal>
       </IonContent>
+
     </IonPage>
   );
 }

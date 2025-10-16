@@ -19,13 +19,29 @@ export default function MealList() {
   const [loading, setLoading] = useState(true);
   const [selectedMeal, setSelectedMeal] = useState('breakfast');
 
+  // Reset state when date changes
+  // Reset all state and fetch new data when date changes
   useEffect(() => {
-    let mounted = true;
-    axios.get(`http://localhost:4000/api/meals/${date}`)
-      .then(res => mounted && setMeals(res.data))
-      .catch(err => console.error(err))
-      .finally(() => mounted && setLoading(false));
-    return () => { mounted = false; };
+    console.log('Date changed to:', date);
+    
+    const fetchMeals = async () => {
+      try {
+        setLoading(true);
+        setMeals(null);
+        setSelectedMeal('breakfast');
+        
+        const response = await axios.get(`http://localhost:4000/api/meals/${date}`);
+        console.log('Fetched meals:', response.data);
+        setMeals(response.data);
+      } catch (err) {
+        console.error('Error fetching meals:', err);
+        setMeals(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMeals();
   }, [date]);
 
   const getTotalCalories = (foods) =>
