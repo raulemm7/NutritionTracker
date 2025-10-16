@@ -9,8 +9,7 @@ import {
   IonSkeletonText,
   IonBadge,
   IonSegment,
-  IonSegmentButton,
-  IonPage
+  IonSegmentButton
 } from '@ionic/react';
 import axios from 'axios';
 
@@ -38,7 +37,7 @@ export default function MealList() {
     { key: 'dinner', label: 'Dinner' }
   ];
 
-  let foods = [];
+  let foods = []; 
   if (meals && meals[selectedMeal] && meals[selectedMeal].foods) {
     foods = meals[selectedMeal].foods;
   }
