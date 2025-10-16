@@ -40,6 +40,7 @@ function AppContent() {
     getDateFromPath(location.pathname),
   );
   const [isDateOpen, setIsDateOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const history = useHistory();
 
   // Sync selectedDate with URL changes
@@ -48,6 +49,17 @@ function AppContent() {
     console.log("URL changed, new date:", urlDate);
     setSelectedDate(urlDate);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleDateChange = (value) => {
     const date = value.split("T")[0];
@@ -63,9 +75,12 @@ function AppContent() {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ paddingInlineStart: 20, textAlign: "left" }}>
-            Nutrition Tracker
-          </IonTitle>
+          <IonTitle style={{ paddingInlineStart: 20, textAlign: 'left' }}>Nutrition Tracker</IonTitle>
+          <div style={{ position: 'absolute', right: 120, top: 0, height: '100%', display: 'flex', alignItems: 'center' }}>
+            <IonLabel color={isOnline ? 'success' : 'danger'} style={{ fontWeight: 'bold', fontSize: 14 }}>
+              {isOnline ? 'Online' : 'Offline'}
+            </IonLabel>
+          </div>
           <IonButtons slot="end">
             <IonButton onClick={() => setIsDateOpen(true)}>
               <IonIcon icon={calendar} slot="start" />
