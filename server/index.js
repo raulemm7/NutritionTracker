@@ -16,6 +16,22 @@ const io = new Server(server, {
   }
 });
 
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('dateChange', (date) => {
+    // Broadcast the date change to all other clients
+    socket.broadcast.emit('userDateChanged', {
+      userId: socket.id,
+      date: date
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
 const dbPath = path.join(__dirname, 'db.json');
 
 // Helper to read/write db

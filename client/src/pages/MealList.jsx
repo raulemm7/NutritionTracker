@@ -9,15 +9,36 @@ import {
   IonSkeletonText,
   IonBadge,
   IonSegment,
-  IonSegmentButton
+  IonSegmentButton,
+  IonToast
 } from '@ionic/react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 
 export default function MealList() {
   const { date } = useParams();
   const [meals, setMeals] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMeal, setSelectedMeal] = useState('breakfast');
+  const [socket, setSocket] = useState(null);
+  const [notification, setNotification] = useState({
+    isOpen: false,
+    message: ''
+  });
+
+  useEffect(() => {
+    const newSocket = io('http://localhost:4000');
+    setSocket(newSocket);
+
+    newSocket.on('userDateChanged', (data) => {
+      setNotification({
+        isOpen: true,
+        message: `Another user is viewing meals for ${data.date}`
+      });
+    });
+
+    return () => newSocket.disconnect();
+  }, []);
 
   // Reset state when date changes
   // Reset all state and fetch new data when date changes
@@ -33,6 +54,10 @@ export default function MealList() {
         const response = await axios.get(`http://localhost:4000/api/meals/${date}`);
         console.log('Fetched meals:', response.data);
         setMeals(response.data);
+
+        if (socket) {
+          socket.emit('dateChange', date);
+        }
       } catch (err) {
         console.error('Error fetching meals:', err);
         setMeals(null);
@@ -42,7 +67,7 @@ export default function MealList() {
     };
 
     fetchMeals();
-  }, [date]);
+    }, [date, socket]);
 
   const getTotalCalories = (foods) =>
     foods.reduce((sum, f) => sum + (f.calories * f.quantity), 0);
@@ -60,6 +85,13 @@ export default function MealList() {
 
   return (
     <IonContent>
+      <IonToast
+        isOpen={notification.isOpen}
+        onDidDismiss={() => setNotification({ isOpen: false, message: '' })}
+        message={notification.message}
+        duration={3000}
+        position="top"
+      />
       <div style={{ margin: '20px 16px 24px 16px' }}>
         <IonSegment value={selectedMeal} onIonChange={e => setSelectedMeal(e.detail.value)}>
           {mealOptions.map(opt => (
