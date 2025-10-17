@@ -83,7 +83,7 @@ export default function Notifications() {
       setEvents((e) => [
         {
           type: "date-change",
-          message: `User ${data.userId.substring(0, 8)} changed date to ${data.date}`,
+          message: `An user changed date to ${data.date}`,
           timestamp: new Date().toISOString(),
         },
         ...e,
