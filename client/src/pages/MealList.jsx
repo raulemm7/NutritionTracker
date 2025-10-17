@@ -31,7 +31,6 @@ export default function MealList() {
     setSocket(newSocket);
 
     const handleUserDateChanged = (data) => {
-      // Verifică dacă notificarea este de la alt user (nu de la tine)
       if (data.userId !== newSocket.id) {
         setNotification({
           isOpen: true,
@@ -48,8 +47,6 @@ export default function MealList() {
     };
   }, []);
 
-  // Reset state when date changes
-  // Reset all state and fetch new data when date changes
   useEffect(() => {
     console.log("Date changed to:", date);
 
