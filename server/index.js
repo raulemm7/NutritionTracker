@@ -85,68 +85,7 @@ app.get("/api/foods", authMiddleware, (req, res) => {
   res.json(db.foods);
 });
 
-// Add food to meal
-app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
-  const { date, meal } = req.params;
-  const { foodId, quantity } = req.body;
 
-  if (
-    !foodId ||
-    !quantity ||
-    !["breakfast", "lunch", "dinner"].includes(meal)
-  ) {
-    return res.status(400).json({ error: "Invalid request parameters" });
-  }
-
-  try {
-    const db = readDb();
-
-    // Find the food item
-    const food = db.foods.find((f) => f.id === foodId);
-    if (!food) {
-      return res.status(404).json({ error: "Food not found" });
-    }
-
-    // Initialize the date and meal if they don't exist
-    if (!db.meals[date]) {
-      db.meals[date] = {
-        userId: req.user.id,
-        [meal]: {
-          time: new Date().toLocaleTimeString("en-US", { hour12: false }),
-          foods: [],
-        },
-      };
-    } else if (!db.meals[date][meal]) {
-      db.meals[date][meal] = {
-        time: new Date().toLocaleTimeString("en-US", { hour12: false }),
-        foods: [],
-      };
-    }
-
-    // Add the food to the meal
-    const foodToAdd = {
-      id: food.id,
-      name: food.name,
-      calories: food.calories,
-      quantity: Number(quantity),
-    };
-
-    db.meals[date][meal].foods.push(foodToAdd);
-    writeDb(db);
-
-    // Emit socket event to notify other users
-    io.to(`user-${req.user.id}`).emit("mealUpdated", {
-      date,
-      meal,
-      userId: req.user.id,
-    });
-
-    res.json(db.meals[date][meal]);
-  } catch (error) {
-    console.error("Error adding food to meal:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 // Simple login endpoint - returns JWT
 app.post("/api/login", (req, res) => {
@@ -199,25 +138,24 @@ app.get("/api/foods/:id", (req, res) => {
 
 // GET meals for a date
 app.get("/api/meals/:date", authMiddleware, (req, res) => {
+  const userId = req.user.id;
   const db = readDb();
-  const meals = db.meals[req.params.date];
+  
+  // Ensure we're only accessing the logged-in user's meals
+  const userMeals = db.meals[userId];
+  const dateMeals = userMeals ? userMeals[req.params.date] : null;
 
   // If no meals exist for this date, return empty template
-  if (!meals) {
+  if (!dateMeals) {
     return res.json({
-      userId: req.user.id,
       breakfast: { time: "08:00", foods: [] },
       lunch: { time: "12:30", foods: [] },
       dinner: { time: "19:00", foods: [] },
     });
   }
 
-  // Only return meals if they belong to the authenticated user
-  if (meals.userId !== req.user.id) {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
-  res.json(meals);
+  // Return only the current user's meals
+  res.json(dateMeals);
 });
 
 // POST add food to a meal
@@ -229,16 +167,26 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
   const food = db.foods.find((f) => f.id === foodId);
   if (!food) return res.status(404).json({ error: "Food not found" });
 
+  // Initialize user's meals if they don't exist
+  if (!db.meals[req.user.id]) {
+    db.meals[req.user.id] = {};
+  }
+
   // Initialize date and meal if they don't exist
-  if (!db.meals[date]) {
-    db.meals[date] = {
-      userId: req.user.id,
-      breakfast: { time: "08:00", foods: [] },
-      lunch: { time: "12:30", foods: [] },
+  if (!db.meals[req.user.id][date]) {
+    db.meals[req.user.id][date] = {
+      breakfast: { time: "07:00", foods: [] },
+      lunch: { time: "12:00", foods: [] },
       dinner: { time: "19:00", foods: [] },
     };
-  } else if (db.meals[date].userId !== req.user.id) {
-    return res.status(403).json({ error: "Access denied" });
+  }
+  
+  // Initialize meal structure if it doesn't exist
+  if (!db.meals[req.user.id][date][meal]) {
+    db.meals[req.user.id][date][meal] = {
+      time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+      foods: []
+    };
   }
 
   // Add food to meal
@@ -249,14 +197,14 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
     quantity: quantity || 1,
   };
 
-  db.meals[date][meal].foods.push(mealEntry);
+  db.meals[req.user.id][date][meal].foods.push(mealEntry);
   writeDb(db);
 
   // Notify only the user who owns the meal
   io.to(`user-${req.user.id}`).emit("meal-updated", {
     date,
     meal,
-    foods: db.meals[date][meal].foods,
+    foods: db.meals[req.user.id][date][meal].foods,
   });
 
   res.status(201).json(mealEntry);
@@ -268,11 +216,11 @@ app.patch("/api/meals/:date/:meal/time", authMiddleware, (req, res) => {
   const { time } = req.body;
 
   const db = readDb();
-  if (!db.meals[date] || !db.meals[date][meal]) {
+  if (!db.meals[req.user.id] || !db.meals[req.user.id][date] || !db.meals[req.user.id][date][meal]) {
     return res.status(404).json({ error: "Meal not found" });
   }
 
-  db.meals[date][meal].time = time;
+  db.meals[req.user.id][date][meal].time = time;
   writeDb(db);
 
   io.to(`user-${req.user.id}`).emit("meal-time-updated", { date, meal, time });

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
+import LocalStorageService from "../services/localStorage";
 
 const AuthContext = createContext();
 
@@ -12,40 +13,59 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize axios defaults with stored token if it exists
   useEffect(() => {
-    const t = localStorage.getItem("authToken");
+    const t = LocalStorageService.getAuthToken();
+    if (t) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+    }
+  }, []);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const t = LocalStorageService.getAuthToken();
     if (!t) {
       setLoading(false);
       return;
     }
-    axios.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+
     // verify with server
     axios
       .get("http://localhost:4000/api/verify")
       .then((res) => {
         setUser(res.data.user);
         setToken(t);
+        LocalStorageService.setUserId(res.data.user.id);
       })
       .catch(() => {
-        localStorage.removeItem("authToken");
-        delete axios.defaults.headers.common["Authorization"];
-        setUser(null);
-        setToken(null);
+        handleLogout();
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleLogout = () => {
+    LocalStorageService.clearAuth();
+    delete axios.defaults.headers.common["Authorization"];
+    setUser(null);
+    setToken(null);
+  };
 
   const login = async (username, password) => {
     const res = await axios.post("http://localhost:4000/api/login", {
       username,
       password,
     });
+    
     const t = res.data.token;
-    localStorage.setItem("authToken", t);
+    const userData = res.data.user;
+    
+    // Set up auth state
+    LocalStorageService.setAuthToken(t);
+    LocalStorageService.setUserId(userData.id);
     axios.defaults.headers.common["Authorization"] = `Bearer ${t}`;
     setToken(t);
-    setUser(res.data.user);
-
+    setUser(userData);
+    
     // Initialize socket connection with token
     const { initializeSocket } = await import("../utils/socket");
     initializeSocket(t);
@@ -64,14 +84,14 @@ export function AuthProvider({ children }) {
     return res.data.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem("authToken");
+  const logout = async () => {
+    LocalStorageService.clearAuth();
     delete axios.defaults.headers.common["Authorization"];
     setToken(null);
     setUser(null);
 
-    // Disconnect socket
-    const { disconnectSocket } = require("../utils/socket");
+    // Disconnect socket using dynamic import
+    const { disconnectSocket } = await import("../utils/socket");
     disconnectSocket();
   };
 

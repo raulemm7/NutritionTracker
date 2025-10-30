@@ -25,19 +25,39 @@ class ApiService {
 
   async getFoods() {
     try {
+      // Check authentication first
+      const authToken = LocalStorageService.getAuthToken();
+      if (!authToken) {
+        throw new Error("Not authenticated");
+      }
+
+      const cachedFoods = LocalStorageService.getFoodsCache();
+      
       if (!this.isOnline) {
-        const cachedFoods = LocalStorageService.getFoodsCache();
         if (cachedFoods) return cachedFoods;
         throw new Error("No cached foods available");
       }
 
-      const response = await axios.get(`${this.baseURL}/foods`);
-      // Cache foods when we get them
-      LocalStorageService.setFoodsCache(response.data);
-      return response.data;
+      try {
+        const response = await axios.get(`${this.baseURL}/foods`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          }
+        });
+        // Cache foods when we get them
+        LocalStorageService.setFoodsCache(response.data);
+        return response.data;
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          // Clear cache if unauthorized
+          LocalStorageService.clearAuth();
+          throw new Error("Not authenticated");
+        }
+        if (cachedFoods) return cachedFoods;
+        throw error;
+      }
     } catch (error) {
-      const cachedFoods = LocalStorageService.getFoodsCache();
-      if (cachedFoods) return cachedFoods;
+      console.error("Error fetching foods:", error);
       throw error;
     }
   }
@@ -45,11 +65,18 @@ class ApiService {
   // Meals API
   async getMeals(date) {
     try {
+      // Verify authentication
+      const userId = LocalStorageService.getUserId();
+      const authToken = LocalStorageService.getAuthToken();
+      if (!userId || !authToken) {
+        throw new Error("User not authenticated");
+      }
+
       // Always ensure we have foods cached
       await this.getFoods();
 
-      // Always get local data first
-      const localMeals = LocalStorageService.getOfflineMealsByDate(date) || {};
+      // Get local data for the current user only
+      const localMeals = LocalStorageService.getOfflineMealsByDate(userId, date) || {};
 
       if (!this.isOnline) {
         return localMeals;
@@ -57,7 +84,12 @@ class ApiService {
 
       // If online, get server data and merge with local
       try {
-        const response = await axios.get(`${this.baseURL}/meals/${date}`);
+        const response = await axios.get(`${this.baseURL}/meals/${date}`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          }
+        });
+        
         const serverMeals = response.data || {};
 
         // Merge server and local data, preferring local pending changes
@@ -114,7 +146,8 @@ class ApiService {
     switch (type) {
       case OPERATION_TYPES.ADD_FOOD_TO_MEAL: {
         const { date, mealType, foodData } = data;
-        const meals = LocalStorageService.getOfflineMealsByDate(date) || {};
+          const userId = LocalStorageService.getUserId();
+          const meals = LocalStorageService.getOfflineMealsByDate(userId, date) || {};
 
         if (!meals[mealType]) {
           meals[mealType] = {
