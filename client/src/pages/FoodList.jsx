@@ -32,10 +32,10 @@ export default function FoodList() {
 
   useEffect(() => {
     let mounted = true;
-    
+
     console.log("Fetching foods...");
     setLoading(true);
-    
+
     axios
       .get("http://localhost:4000/api/foods")
       .then((res) => {
@@ -43,7 +43,7 @@ export default function FoodList() {
         if (mounted) {
           if (Array.isArray(res.data) && res.data.length > 0) {
             setFoods(res.data);
-            const calories = res.data.map(food => food.calories);
+            const calories = res.data.map((food) => food.calories);
             const maxCal = Math.max(...calories);
             console.log("Max calories found:", maxCal);
             setMaxPossibleCalories(maxCal);
@@ -67,7 +67,7 @@ export default function FoodList() {
           setLoading(false);
         }
       });
-      
+
     return () => {
       mounted = false;
     };
@@ -146,9 +146,7 @@ export default function FoodList() {
                 pinFormatter={(value) => `${value} kcal`}
               >
                 <IonNote slot="start">0</IonNote>
-                <IonNote slot="end">
-                  {maxPossibleCalories}
-                </IonNote>
+                <IonNote slot="end">{maxPossibleCalories}</IonNote>
               </IonRange>
             </IonItem>
             <div className="ion-text-center ion-padding">

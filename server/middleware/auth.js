@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const WS_SECRET = process.env.WS_SECRET || "CHANGE_THIS_SECRET";
 

@@ -45,22 +45,24 @@ function AppContent() {
   const location = useLocation();
   const history = useHistory();
   const toastTimeout = useRef(null);
-  
-  const [selectedDate, setSelectedDate] = useState(() => getDateFromPath(location.pathname));
+
+  const [selectedDate, setSelectedDate] = useState(() =>
+    getDateFromPath(location.pathname),
+  );
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [showToast, setShowToast] = useState(true);
-  const [toastMessage, setToastMessage] = useState(() => 
-    navigator.onLine ? "You are online" : "You are offline"
+  const [toastMessage, setToastMessage] = useState(() =>
+    navigator.onLine ? "You are online" : "You are offline",
   );
-  const [toastColor, setToastColor] = useState(() => 
-    navigator.onLine ? "success" : "danger"
+  const [toastColor, setToastColor] = useState(() =>
+    navigator.onLine ? "success" : "danger",
   );
 
   // Sync selectedDate with URL changes
   useEffect(() => {
     // Only update selectedDate if we're on a meals route
-    if (location.pathname.includes('/meals/')) {
+    if (location.pathname.includes("/meals/")) {
       const urlDate = getDateFromPath(location.pathname);
       console.log("URL changed, new date:", urlDate);
       setSelectedDate(urlDate);
@@ -92,14 +94,14 @@ function AppContent() {
     const handleOnline = () => {
       setIsOnline(true);
     };
-    
+
     const handleOffline = () => {
       setIsOnline(false);
     };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    
+
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -165,7 +167,11 @@ function AppContent() {
               {!user ? <Redirect to="/login" /> : <MealDetail />}
             </Route>
             <Route exact path="/meals/:date">
-              {!user ? <Redirect to="/login" /> : <MealList key={selectedDate} />}
+              {!user ? (
+                <Redirect to="/login" />
+              ) : (
+                <MealList key={selectedDate} />
+              )}
             </Route>
             <Route exact path="/">
               <Redirect to={user ? `/meals/${selectedDate}` : "/login"} />
@@ -176,26 +182,26 @@ function AppContent() {
           </IonRouterOutlet>
 
           <IonTabBar slot="bottom">
-            <IonTabButton 
-              tab="meals" 
+            <IonTabButton
+              tab="meals"
               onClick={() => history.push(`/meals/${selectedDate}`)}
-              selected={location.pathname.includes('/meals/')}
+              selected={location.pathname.includes("/meals/")}
             >
               <IonIcon icon={restaurantOutline} />
               <IonLabel>Meals</IonLabel>
             </IonTabButton>
-            <IonTabButton 
-              tab="foods" 
-              onClick={() => history.push('/foods')}
-              selected={location.pathname === '/foods'}
+            <IonTabButton
+              tab="foods"
+              onClick={() => history.push("/foods")}
+              selected={location.pathname === "/foods"}
             >
               <IonIcon icon={listOutline} />
               <IonLabel>Foods</IonLabel>
             </IonTabButton>
-            <IonTabButton 
-              tab="notifications" 
-              onClick={() => history.push('/notifications')}
-              selected={location.pathname === '/notifications'}
+            <IonTabButton
+              tab="notifications"
+              onClick={() => history.push("/notifications")}
+              selected={location.pathname === "/notifications"}
             >
               <IonIcon icon={notificationsOutline} />
               <IonLabel>Alerts</IonLabel>

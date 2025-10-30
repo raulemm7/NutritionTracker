@@ -45,11 +45,11 @@ export function AuthProvider({ children }) {
     axios.defaults.headers.common["Authorization"] = `Bearer ${t}`;
     setToken(t);
     setUser(res.data.user);
-    
+
     // Initialize socket connection with token
     const { initializeSocket } = await import("../utils/socket");
     initializeSocket(t);
-    
+
     return res.data.user;
   };
 
@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
     delete axios.defaults.headers.common["Authorization"];
     setToken(null);
     setUser(null);
-    
+
     // Disconnect socket
     const { disconnectSocket } = require("../utils/socket");
     disconnectSocket();

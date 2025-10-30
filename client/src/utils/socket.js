@@ -15,11 +15,11 @@ export function initializeSocket(token) {
   currentToken = token;
   socket = io("http://localhost:4000", {
     auth: {
-      token: token
+      token: token,
     },
-    transports: ['websocket', 'polling'],
+    transports: ["websocket", "polling"],
     reconnectionAttempts: 5,
-    reconnectionDelay: 1000
+    reconnectionDelay: 1000,
   });
 
   socket.on("connect_error", (error) => {
@@ -37,7 +37,7 @@ export function initializeSocket(token) {
 
 export function getSocket() {
   if (!currentToken) return null;
-  
+
   // If we have a token but no socket, try to reconnect
   if (!socket) {
     return initializeSocket(currentToken);

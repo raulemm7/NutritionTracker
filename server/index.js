@@ -138,7 +138,7 @@ app.get("/api/foods/:id", (req, res) => {
 app.get("/api/meals/:date", authMiddleware, (req, res) => {
   const db = readDb();
   const meals = db.meals[req.params.date];
-  
+
   // If no meals exist for this date, return empty template
   if (!meals) {
     return res.json({
@@ -190,10 +190,10 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
   writeDb(db);
 
   // Notify only the user who owns the meal
-  io.to(`user-${req.user.id}`).emit("meal-updated", { 
-    date, 
-    meal, 
-    foods: db.meals[date][meal].foods 
+  io.to(`user-${req.user.id}`).emit("meal-updated", {
+    date,
+    meal,
+    foods: db.meals[date][meal].foods,
   });
 
   res.status(201).json(mealEntry);
