@@ -20,13 +20,19 @@ import {
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { useHistory, useLocation, Redirect, Route } from 'react-router-dom';
-import { calendar, restaurantOutline, listOutline, notificationsOutline } from 'ionicons/icons';
+import { calendar, restaurantOutline, listOutline, notificationsOutline, logOutOutline } from 'ionicons/icons';
 import FoodList from './pages/FoodList';
 import MealList from './pages/MealList';
 import MealDetail from './pages/MealDetail';
 import Notifications from './components/Notifications';
+import Login from './pages/Login';
+import { AuthProvider, useAuth } from './components/Auth';
 
 function AppContent() {
+  const { user, loading, logout } = useAuth();
+  // Wait until auth is resolved before rendering the rest of the app
+  if (loading) return null;
+
   const location = useLocation();
   function getDateFromPath(path) {
     const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
@@ -110,33 +116,54 @@ function AppContent() {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle style={{ paddingInlineStart: 20, textAlign: 'left' }}>Nutrition Tracker</IonTitle>
+          <IonTitle
+            style={
+              user
+              ? { paddingInlineStart: 20, textAlign: 'left' }
+              : {}
+            }
+          >
+            Nutrify
+          </IonTitle>
+
           <IonButtons slot="end">
-            <IonButton onClick={() => setIsDateOpen(true)}>
-              <IonIcon icon={calendar} slot="start" />
-              {selectedDate}
-            </IonButton>
+            {user && (
+              <IonButton onClick={() => setIsDateOpen(true)}>
+                <IonIcon icon={calendar} slot="start" />
+                  <span style={{ marginLeft: 6 }}>{selectedDate}</span>
+              </IonButton>
+            )}
+            
+            {user && (
+              <IonButton onClick={() => { logout(); history.replace('/login'); }} aria-label="Logout">
+                <IonIcon icon={logOutOutline} />
+              </IonButton>
+            )}
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
+
       <IonContent>
         <IonTabs>
           <IonRouterOutlet>
+            <Route exact path="/login">
+              {user ? <Redirect to={`/meals/${selectedDate}`} /> : <Login />}
+            </Route>
             <Route exact path="/meals/:date">
-              <MealList key={selectedDate} />
+              {!user ? <Redirect to="/login" /> : <MealList key={selectedDate} />}
             </Route>
             <Route exact path="/meals/:date/:meal">
-              <MealDetail />
+              {!user ? <Redirect to="/login" /> : <MealDetail />}
             </Route>
             <Route exact path="/foods">
-              <FoodList />
+              {!user ? <Redirect to="/login" /> : <FoodList />}
             </Route>
             <Route exact path="/notifications">
-              <Notifications />
+              {!user ? <Redirect to="/login" /> : <Notifications />}
             </Route>
             <Route exact path="/">
-              <Redirect to={`/meals/${selectedDate}`} />
+              {!user ? <Redirect to="/login" /> : <Redirect to={`/meals/${selectedDate}`} />}
             </Route>
           </IonRouterOutlet>
 
@@ -184,10 +211,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <IonApp>
-      <IonReactRouter>
-        <AppContent />
-      </IonReactRouter>
-    </IonApp>
+    <AuthProvider>
+      <IonApp>
+        <IonReactRouter>
+          <AppContent />
+        </IonReactRouter>
+      </IonApp>
+    </AuthProvider>
   );
 }

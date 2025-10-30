@@ -15,9 +15,9 @@ import {
   IonIcon,
   IonModal,
   IonRange,
-  IonButtons
+  IonButtons,
 } from "@ionic/react";
-import { filterOutline } from 'ionicons/icons';
+import { filterOutline } from "ionicons/icons";
 import axios from "axios";
 
 export default function FoodList() {
@@ -26,22 +26,29 @@ export default function FoodList() {
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [maxCalories, setMaxCalories] = useState(500);
+  const [maxCalories, setMaxCalories] = useState(2000); // Set a reasonable default
   const pageSize = 3;
 
   useEffect(() => {
     let mounted = true;
     axios
       .get("http://localhost:4000/api/foods")
-      .then((res) => mounted && setFoods(res.data))
+      .then((res) => {
+        if (mounted) {
+          setFoods(res.data);
+          // Set initial maxCalories to the highest calorie value
+          setMaxCalories(Math.max(...res.data.map(food => food.calories)));
+        }
+      })
       .catch((err) => console.error(err))
       .finally(() => mounted && setLoading(false));
     return () => (mounted = false);
   }, []);
 
-  const filteredFoods = foods.filter((food) =>
-    food.name.toLowerCase().includes(searchText.toLowerCase()) &&
-    food.calories <= maxCalories
+  const filteredFoods = foods.filter(
+    (food) =>
+      food.name.toLowerCase().includes(searchText.toLowerCase()) &&
+      food.calories <= maxCalories,
   );
   const totalPages = Math.ceil(filteredFoods.length / pageSize);
   const paginatedFoods = filteredFoods.slice(
@@ -52,8 +59,7 @@ export default function FoodList() {
   // Reset to page 1 when search changes
   useEffect(() => {
     setPage(1);
-    setMaxCalories(Math.max(...foods.map(food => food.calories)));
-  }, [searchText, maxCalories]);
+  }, [searchText]); // Only reset page on search changes
 
   return (
     <>
@@ -64,7 +70,14 @@ export default function FoodList() {
       </IonHeader>
 
       <IonContent fullscreen className="ion-padding-bottom">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "0 8px",
+          }}
+        >
           <IonSearchbar
             style={{ flex: 1 }}
             value={searchText}
@@ -73,16 +86,13 @@ export default function FoodList() {
             animated={true}
             debounce={300}
           />
-          <IonButton 
-            fill="clear"
-            onClick={() => setIsFilterModalOpen(true)}
-          >
+          <IonButton fill="clear" onClick={() => setIsFilterModalOpen(true)}>
             <IonIcon icon={filterOutline} />
           </IonButton>
         </div>
 
-        <IonModal 
-          isOpen={isFilterModalOpen} 
+        <IonModal
+          isOpen={isFilterModalOpen}
           onDidDismiss={() => setIsFilterModalOpen(false)}
         >
           <IonHeader>
@@ -99,16 +109,18 @@ export default function FoodList() {
             <h2>Maximum Calories</h2>
             <IonItem lines="none">
               <IonRange
-              className="range-pin"
+                className="range-pin"
                 min={0}
-                max={Math.max(...foods.map(food => food.calories))}
+                max={Math.max(...foods.map((food) => food.calories))}
                 value={maxCalories}
-                onIonChange={e => setMaxCalories(e.detail.value)}
+                onIonChange={(e) => setMaxCalories(e.detail.value)}
                 pin={true}
                 pinFormatter={(value) => `${value} kcal`}
               >
                 <IonNote slot="start">0</IonNote>
-                <IonNote slot="end">{Math.max(...foods.map(food => food.calories))}</IonNote>
+                <IonNote slot="end">
+                  {Math.max(...foods.map((food) => food.calories))}
+                </IonNote>
               </IonRange>
             </IonItem>
             <div className="ion-text-center ion-padding">
@@ -146,7 +158,10 @@ export default function FoodList() {
                     {food.fat}g
                   </p>
                 </IonLabel>
-                <IonBadge slot="end" color={food.calories > maxCalories ? 'danger' : 'primary'}>
+                <IonBadge
+                  slot="end"
+                  color={food.calories > maxCalories ? "danger" : "primary"}
+                >
                   {food.calories} kcal
                 </IonBadge>
               </IonItem>
