@@ -18,6 +18,8 @@ export default function FoodList() {
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 3;
 
   useEffect(() => {
     let mounted = true;
@@ -32,6 +34,16 @@ export default function FoodList() {
   const filteredFoods = foods.filter((food) =>
     food.name.toLowerCase().includes(searchText.toLowerCase()),
   );
+  const totalPages = Math.ceil(filteredFoods.length / pageSize);
+  const paginatedFoods = filteredFoods.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchText]);
 
   return (
     <>
@@ -66,7 +78,7 @@ export default function FoodList() {
               <IonNote>No foods found</IonNote>
             </div>
           ) : (
-            filteredFoods.map((food) => (
+            paginatedFoods.map((food) => (
               <IonItem key={food.id}>
                 <IonLabel>
                   <h2>{food.name}</h2>
@@ -82,6 +94,29 @@ export default function FoodList() {
             ))
           )}
         </IonList>
+        {/* Pagination controls */}
+        {!loading && filteredFoods.length > pageSize && (
+          <div className="ion-padding ion-text-center">
+            <ion-button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              color="primary"
+              style={{ marginRight: 8 }}
+            >
+              Previous
+            </ion-button>
+            <IonNote style={{ margin: "0 12px" }}>
+              Page {page} of {totalPages}
+            </IonNote>
+            <ion-button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              color="primary"
+            >
+              Next
+            </ion-button>
+          </div>
+        )}
       </IonContent>
     </>
   );
