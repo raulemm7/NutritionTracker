@@ -26,23 +26,51 @@ export default function FoodList() {
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [maxCalories, setMaxCalories] = useState(2000); // Set a reasonable default
+  const [maxCalories, setMaxCalories] = useState(2000);
+  const [maxPossibleCalories, setMaxPossibleCalories] = useState(2000);
   const pageSize = 3;
 
   useEffect(() => {
     let mounted = true;
+    
+    console.log("Fetching foods...");
+    setLoading(true);
+    
     axios
       .get("http://localhost:4000/api/foods")
       .then((res) => {
+        console.log("Received foods:", res.data);
         if (mounted) {
-          setFoods(res.data);
-          // Set initial maxCalories to the highest calorie value
-          setMaxCalories(Math.max(...res.data.map((food) => food.calories)));
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            setFoods(res.data);
+            const calories = res.data.map(food => food.calories);
+            const maxCal = Math.max(...calories);
+            console.log("Max calories found:", maxCal);
+            setMaxPossibleCalories(maxCal);
+            setMaxCalories(maxCal);
+          } else {
+            console.log("No foods received or empty array");
+            setFoods([]);
+            setMaxPossibleCalories(2000);
+            setMaxCalories(2000);
+          }
         }
       })
-      .catch((err) => console.error(err))
-      .finally(() => mounted && setLoading(false));
-    return () => (mounted = false);
+      .catch((err) => {
+        console.error("Error fetching foods:", err);
+        if (err.response) {
+          console.error("Response error:", err.response.data);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
+      
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const filteredFoods = foods.filter(
@@ -111,7 +139,7 @@ export default function FoodList() {
               <IonRange
                 className="range-pin"
                 min={0}
-                max={Math.max(...foods.map((food) => food.calories))}
+                max={maxPossibleCalories}
                 value={maxCalories}
                 onIonChange={(e) => setMaxCalories(e.detail.value)}
                 pin={true}
@@ -119,7 +147,7 @@ export default function FoodList() {
               >
                 <IonNote slot="start">0</IonNote>
                 <IonNote slot="end">
-                  {Math.max(...foods.map((food) => food.calories))}
+                  {maxPossibleCalories}
                 </IonNote>
               </IonRange>
             </IonItem>

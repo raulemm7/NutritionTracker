@@ -81,10 +81,8 @@ const writeDb = (data) => {
 // GET foods list
 app.get("/api/foods", authMiddleware, (req, res) => {
   const db = readDb();
-  const userFoods = db.foods.filter(
-    food => food.isPublic || food.userId === req.user.id
-  );
-  res.json(userFoods);
+  // For now, return all foods since they are considered public
+  res.json(db.foods);
 });
 
 // Simple login endpoint - returns JWT

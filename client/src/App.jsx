@@ -34,28 +34,27 @@ import Notifications from "./components/Notifications";
 import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./components/Auth";
 
+function getDateFromPath(path) {
+  const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : new Date().toISOString().split("T")[0];
+}
+
 function AppContent() {
   const { user, loading, logout } = useAuth();
-  // Wait until auth is resolved before rendering the rest of the app
-  if (loading) return null;
-
   const location = useLocation();
-  function getDateFromPath(path) {
-    const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
-    return match ? match[1] : new Date().toISOString().split("T")[0];
-  }
-  const [selectedDate, setSelectedDate] = useState(
-    getDateFromPath(location.pathname),
-  );
-  const [isDateOpen, setIsDateOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [showToast, setShowToast] = useState(true); // Show on entry
-  const [toastMessage, setToastMessage] = useState(
-    isOnline ? "You are online" : "You are offline",
-  );
-  const [toastColor, setToastColor] = useState(isOnline ? "success" : "danger");
-  const toastTimeout = useRef(null);
   const history = useHistory();
+  const toastTimeout = useRef(null);
+  
+  const [selectedDate, setSelectedDate] = useState(() => getDateFromPath(location.pathname));
+  const [isDateOpen, setIsDateOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [showToast, setShowToast] = useState(true);
+  const [toastMessage, setToastMessage] = useState(() => 
+    navigator.onLine ? "You are online" : "You are offline"
+  );
+  const [toastColor, setToastColor] = useState(() => 
+    navigator.onLine ? "success" : "danger"
+  );
 
   // Sync selectedDate with URL changes
   useEffect(() => {
@@ -64,7 +63,7 @@ function AppContent() {
     setSelectedDate(urlDate);
   }, [location.pathname]);
 
-  // Show toast on entry for 3s if online, else stay until online
+  // Effect: Initial online status and toast
   useEffect(() => {
     if (isOnline) {
       setToastMessage("You are online");
@@ -75,38 +74,31 @@ function AppContent() {
       setToastMessage("You are offline");
       setToastColor("danger");
       setShowToast(true);
-      if (toastTimeout.current) clearTimeout(toastTimeout.current);
     }
-    // Cleanup on unmount
-    return () => {
-      if (toastTimeout.current) clearTimeout(toastTimeout.current);
-    };
-    // Only run on mount
-    // eslint-disable-next-line
-  }, []);
 
-  // Listen for online/offline changes
+    return () => {
+      if (toastTimeout.current) {
+        clearTimeout(toastTimeout.current);
+      }
+    };
+  }, [isOnline]);
+
+  // Effect: Online/offline status listener
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      setToastMessage("You are online");
-      setToastColor("success");
-      setShowToast(true);
-      toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
     };
+    
     const handleOffline = () => {
       setIsOnline(false);
-      setToastMessage("You are offline");
-      setToastColor("danger");
-      setShowToast(true);
-      if (toastTimeout.current) clearTimeout(toastTimeout.current);
     };
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      if (toastTimeout.current) clearTimeout(toastTimeout.current);
     };
   }, []);
 
