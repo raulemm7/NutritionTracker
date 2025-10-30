@@ -1,24 +1,24 @@
-import axios from 'axios';
-import LocalStorageService from './localStorage';
+import axios from "axios";
+import LocalStorageService from "./localStorage";
 
 // Operation types
 export const OPERATION_TYPES = {
-  ADD_FOOD_TO_MEAL: 'ADD_FOOD_TO_MEAL',
-  UPDATE_MEAL: 'UPDATE_MEAL',
-  DELETE_FOOD_FROM_MEAL: 'DELETE_FOOD_FROM_MEAL',
+  ADD_FOOD_TO_MEAL: "ADD_FOOD_TO_MEAL",
+  UPDATE_MEAL: "UPDATE_MEAL",
+  DELETE_FOOD_FROM_MEAL: "DELETE_FOOD_FROM_MEAL",
 };
 
 class ApiService {
   constructor() {
-    this.baseURL = 'http://localhost:4000/api';
+    this.baseURL = "http://localhost:4000/api";
     this.isOnline = navigator.onLine;
 
     // Listen for online/offline changes
-    window.addEventListener('online', () => {
+    window.addEventListener("online", () => {
       this.isOnline = true;
       this.processPendingOperations();
     });
-    window.addEventListener('offline', () => {
+    window.addEventListener("offline", () => {
       this.isOnline = false;
     });
   }
@@ -28,7 +28,7 @@ class ApiService {
       if (!this.isOnline) {
         const cachedFoods = LocalStorageService.getFoodsCache();
         if (cachedFoods) return cachedFoods;
-        throw new Error('No cached foods available');
+        throw new Error("No cached foods available");
       }
 
       const response = await axios.get(`${this.baseURL}/foods`);
@@ -47,10 +47,10 @@ class ApiService {
     try {
       // Always ensure we have foods cached
       await this.getFoods();
-      
+
       // Always get local data first
       const localMeals = LocalStorageService.getOfflineMealsByDate(date) || {};
-      
+
       if (!this.isOnline) {
         return localMeals;
       }
@@ -64,7 +64,7 @@ class ApiService {
         const mergedMeals = {
           breakfast: { ...serverMeals.breakfast, ...localMeals.breakfast },
           lunch: { ...serverMeals.lunch, ...localMeals.lunch },
-          dinner: { ...serverMeals.dinner, ...localMeals.dinner }
+          dinner: { ...serverMeals.dinner, ...localMeals.dinner },
         };
 
         // Update local storage with merged data
@@ -76,11 +76,11 @@ class ApiService {
 
         return mergedMeals;
       } catch (error) {
-        console.warn('Failed to fetch from server, using local data:', error);
+        console.warn("Failed to fetch from server, using local data:", error);
         return localMeals;
       }
     } catch (error) {
-      console.error('Error in getMeals:', error);
+      console.error("Error in getMeals:", error);
       throw error;
     }
   }
@@ -98,7 +98,7 @@ class ApiService {
 
       const response = await axios.post(
         `${this.baseURL}/meals/${date}/${mealType}`,
-        foodData
+        foodData,
       );
       return response.data;
     } catch (error) {
@@ -115,10 +115,10 @@ class ApiService {
       case OPERATION_TYPES.ADD_FOOD_TO_MEAL: {
         const { date, mealType, foodData } = data;
         const meals = LocalStorageService.getOfflineMealsByDate(date) || {};
-        
+
         if (!meals[mealType]) {
           meals[mealType] = {
-            time: new Date().toLocaleTimeString('en-US', { hour12: false }),
+            time: new Date().toLocaleTimeString("en-US", { hour12: false }),
             foods: [],
           };
         }
@@ -126,8 +126,8 @@ class ApiService {
         // Get complete food info from cache
         let food = LocalStorageService.getFoodFromCache(foodData.foodId);
         if (!food && this.isOnline) {
-          console.log('Food not in cache, fetching fresh data...');
-          
+          console.log("Food not in cache, fetching fresh data...");
+
           // Only try to fetch if we're online
           const response = await axios.get(`${this.baseURL}/foods`);
           if (response.data && Array.isArray(response.data)) {
@@ -135,9 +135,11 @@ class ApiService {
             food = LocalStorageService.getFoodFromCache(foodData.foodId);
           }
         }
-        
+
         if (!food) {
-          throw new Error('Could not get food data. Please ensure you are online and try again.');
+          throw new Error(
+            "Could not get food data. Please ensure you are online and try again.",
+          );
         }
 
         // Create the food entry with all necessary data
@@ -145,11 +147,15 @@ class ApiService {
           id: food.id,
           name: food.name,
           calories: food.calories,
-          quantity: Number(foodData.quantity)
+          quantity: Number(foodData.quantity),
         };
-        
+
         meals[mealType].foods.push(foodEntry);
-        result = LocalStorageService.addOfflineMeal(date, mealType, meals[mealType]);
+        result = LocalStorageService.addOfflineMeal(
+          date,
+          mealType,
+          meals[mealType],
+        );
         break;
       }
       // Add other operation type handlers here
@@ -177,7 +183,7 @@ class ApiService {
             const { date, mealType, foodData } = data;
             result = await axios.post(
               `${this.baseURL}/meals/${date}/${mealType}`,
-              foodData
+              foodData,
             );
             break;
           }

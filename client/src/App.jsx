@@ -66,13 +66,17 @@ function AppContent() {
   useEffect(() => {
     const loadFoods = async () => {
       try {
-        const response = await axios.get('http://localhost:4000/api/foods');
+        const response = await axios.get("http://localhost:4000/api/foods");
         if (response.data && Array.isArray(response.data)) {
           LocalStorageService.setFoodsCache(response.data);
-          console.log('Foods cached successfully:', response.data.length, 'items');
+          console.log(
+            "Foods cached successfully:",
+            response.data.length,
+            "items",
+          );
         }
       } catch (error) {
-        console.error('Error caching foods:', error);
+        console.error("Error caching foods:", error);
       }
     };
 

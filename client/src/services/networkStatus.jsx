@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import React from 'react';
+import { createContext, useContext, useEffect, useState } from "react";
+import React from "react";
 
 const NetworkStatusContext = createContext({
   isOnline: true,
@@ -16,7 +16,7 @@ export const NetworkStatusProvider = ({ children }) => {
 
   useEffect(() => {
     const handleOnline = () => {
-      setStatus(prev => ({
+      setStatus((prev) => ({
         ...prev,
         isOnline: true,
         lastOnlineAt: new Date(),
@@ -24,19 +24,19 @@ export const NetworkStatusProvider = ({ children }) => {
     };
 
     const handleOffline = () => {
-      setStatus(prev => ({
+      setStatus((prev) => ({
         ...prev,
         isOnline: false,
         lastOfflineAt: new Date(),
       }));
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 

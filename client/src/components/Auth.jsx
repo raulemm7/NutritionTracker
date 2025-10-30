@@ -54,11 +54,11 @@ export function AuthProvider({ children }) {
     const { loadInitialData } = await import("../services/initialDataLoader");
     try {
       const foods = await loadInitialData();
-      console.log('Foods cached successfully:', foods.length, 'items');
+      console.log("Foods cached successfully:", foods.length, "items");
     } catch (error) {
-      console.error('Failed to cache foods:', error);
+      console.error("Failed to cache foods:", error);
       // Show error to user
-      alert('Failed to load foods data. Some features might not work offline.');
+      alert("Failed to load foods data. Some features might not work offline.");
     }
 
     return res.data.user;

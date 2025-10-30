@@ -15,7 +15,7 @@ import {
   IonFabButton,
   IonIcon,
 } from "@ionic/react";
-import { add } from 'ionicons/icons';
+import { add } from "ionicons/icons";
 import { io } from "socket.io-client";
 import AddFoodModal from "../components/AddFoodModal";
 import apiService from "../services/api";
@@ -97,23 +97,26 @@ export default function MealList() {
 
   const handleAddFood = async ({ foodId, quantity }) => {
     try {
-      const mealData = await apiService.addFoodToMeal(date, selectedMeal, { foodId, quantity });
-      
+      const mealData = await apiService.addFoodToMeal(date, selectedMeal, {
+        foodId,
+        quantity,
+      });
+
       // Update the meals state with the new food
-      setMeals(prev => ({
+      setMeals((prev) => ({
         ...prev,
-        [selectedMeal]: mealData
+        [selectedMeal]: mealData,
       }));
 
       setNotification({
         isOpen: true,
-        message: "Food added successfully!"
+        message: "Food added successfully!",
       });
     } catch (error) {
       console.error("Error adding food:", error);
       setNotification({
         isOpen: true,
-        message: "Failed to add food. Please try again."
+        message: "Failed to add food. Please try again.",
       });
     }
   };

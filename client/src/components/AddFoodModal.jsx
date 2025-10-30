@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   IonModal,
   IonHeader,
@@ -14,16 +14,16 @@ import {
   IonInput,
   IonBadge,
   IonSkeletonText,
-} from '@ionic/react';
-import LocalStorageService from '../services/localStorage';
+} from "@ionic/react";
+import LocalStorageService from "../services/localStorage";
 
 export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [selectedFood, setSelectedFood] = useState(null);
-  const [quantity, setQuantity] = useState('1');
-  const [error, setError] = useState('');
+  const [quantity, setQuantity] = useState("1");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -36,13 +36,15 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
           if (cachedFoods && cachedFoods.length > 0) {
             setFoods(cachedFoods);
           } else {
-            setError('No foods available. Please go online to load foods data.');
+            setError(
+              "No foods available. Please go online to load foods data.",
+            );
           }
         }
       } catch (err) {
-        console.error('Error loading foods:', err);
+        console.error("Error loading foods:", err);
         if (mounted) {
-          setError('Failed to load foods from cache');
+          setError("Failed to load foods from cache");
         }
       } finally {
         if (mounted) {
@@ -60,8 +62,8 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
     };
   }, [isOpen]);
 
-  const filteredFoods = foods.filter(food =>
-    food.name.toLowerCase().includes(searchText.toLowerCase())
+  const filteredFoods = foods.filter((food) =>
+    food.name.toLowerCase().includes(searchText.toLowerCase()),
   );
 
   const handleFoodSelect = (food) => {
@@ -70,26 +72,26 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
 
   const handleAddFood = () => {
     if (!selectedFood) {
-      setError('Please select a food');
+      setError("Please select a food");
       return;
     }
 
     const qty = Number(quantity);
     if (isNaN(qty) || qty <= 0) {
-      setError('Please enter a valid quantity');
+      setError("Please enter a valid quantity");
       return;
     }
 
     onAddFood({
       foodId: selectedFood.id,
-      quantity: qty
+      quantity: qty,
     });
 
     // Reset state
     setSelectedFood(null);
-    setQuantity('1');
-    setSearchText('');
-    setError('');
+    setQuantity("1");
+    setSearchText("");
+    setError("");
     onClose();
   };
 
@@ -107,7 +109,7 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
       <IonContent className="ion-padding">
         <IonSearchbar
           value={searchText}
-          onIonChange={e => setSearchText(e.detail.value)}
+          onIonChange={(e) => setSearchText(e.detail.value)}
           placeholder="Search foods..."
           animated={true}
           debounce={300}
@@ -127,35 +129,43 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
               <IonInput
                 type="number"
                 value={quantity}
-                onIonChange={e => setQuantity(e.detail.value)}
+                onIonChange={(e) => setQuantity(e.detail.value)}
                 min="1"
               />
             </IonItem>
-            <IonButton expand="block" onClick={handleAddFood} className="ion-margin-top">
+            <IonButton
+              expand="block"
+              onClick={handleAddFood}
+              className="ion-margin-top"
+            >
               Add to Meal
             </IonButton>
           </div>
         ) : (
           <IonList>
-            {loading ? (
-              Array(3).fill().map((_, i) => (
-                <IonItem key={i}>
-                  <IonLabel>
-                    <IonSkeletonText animated style={{ width: '70%' }} />
-                  </IonLabel>
-                  <IonBadge slot="end">
-                    <IonSkeletonText animated style={{ width: '30px' }} />
-                  </IonBadge>
-                </IonItem>
-              ))
-            ) : (
-              filteredFoods.map(food => (
-                <IonItem key={food.id} button onClick={() => handleFoodSelect(food)}>
-                  <IonLabel>{food.name}</IonLabel>
-                  <IonBadge slot="end">{food.calories} kcal</IonBadge>
-                </IonItem>
-              ))
-            )}
+            {loading
+              ? Array(3)
+                  .fill()
+                  .map((_, i) => (
+                    <IonItem key={i}>
+                      <IonLabel>
+                        <IonSkeletonText animated style={{ width: "70%" }} />
+                      </IonLabel>
+                      <IonBadge slot="end">
+                        <IonSkeletonText animated style={{ width: "30px" }} />
+                      </IonBadge>
+                    </IonItem>
+                  ))
+              : filteredFoods.map((food) => (
+                  <IonItem
+                    key={food.id}
+                    button
+                    onClick={() => handleFoodSelect(food)}
+                  >
+                    <IonLabel>{food.name}</IonLabel>
+                    <IonBadge slot="end">{food.calories} kcal</IonBadge>
+                  </IonItem>
+                ))}
           </IonList>
         )}
       </IonContent>

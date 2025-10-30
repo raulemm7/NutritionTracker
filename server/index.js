@@ -89,16 +89,20 @@ app.get("/api/foods", authMiddleware, (req, res) => {
 app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
   const { date, meal } = req.params;
   const { foodId, quantity } = req.body;
-  
-  if (!foodId || !quantity || !['breakfast', 'lunch', 'dinner'].includes(meal)) {
+
+  if (
+    !foodId ||
+    !quantity ||
+    !["breakfast", "lunch", "dinner"].includes(meal)
+  ) {
     return res.status(400).json({ error: "Invalid request parameters" });
   }
 
   try {
     const db = readDb();
-    
+
     // Find the food item
-    const food = db.foods.find(f => f.id === foodId);
+    const food = db.foods.find((f) => f.id === foodId);
     if (!food) {
       return res.status(404).json({ error: "Food not found" });
     }
@@ -107,12 +111,15 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
     if (!db.meals[date]) {
       db.meals[date] = {
         userId: req.user.id,
-        [meal]: { time: new Date().toLocaleTimeString('en-US', { hour12: false }), foods: [] }
+        [meal]: {
+          time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+          foods: [],
+        },
       };
     } else if (!db.meals[date][meal]) {
       db.meals[date][meal] = {
-        time: new Date().toLocaleTimeString('en-US', { hour12: false }),
-        foods: []
+        time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+        foods: [],
       };
     }
 
@@ -121,7 +128,7 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
       id: food.id,
       name: food.name,
       calories: food.calories,
-      quantity: Number(quantity)
+      quantity: Number(quantity),
     };
 
     db.meals[date][meal].foods.push(foodToAdd);
@@ -131,7 +138,7 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
     io.to(`user-${req.user.id}`).emit("mealUpdated", {
       date,
       meal,
-      userId: req.user.id
+      userId: req.user.id,
     });
 
     res.json(db.meals[date][meal]);
