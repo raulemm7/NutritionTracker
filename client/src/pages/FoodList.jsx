@@ -18,9 +18,12 @@ import {
   IonButtons,
 } from "@ionic/react";
 import { filterOutline } from "ionicons/icons";
-import axios from "axios";
+import LocalStorageService from "../services/localStorage";
+import { useNetworkStatus } from "../services/networkStatus.jsx";
+import apiService from "../services/api";
 
 export default function FoodList() {
+  const { isOnline } = useNetworkStatus();
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
@@ -33,40 +36,42 @@ export default function FoodList() {
   useEffect(() => {
     let mounted = true;
 
-    console.log("Fetching foods...");
-    setLoading(true);
+    const loadFoods = async () => {
+      try {
+        setLoading(true);
+        
+        // First try to get from cache
+        let foodsData = LocalStorageService.getFoodsCache();
 
-    axios
-      .get("http://localhost:4000/api/foods")
-      .then((res) => {
-        console.log("Received foods:", res.data);
-        if (mounted) {
-          if (Array.isArray(res.data) && res.data.length > 0) {
-            setFoods(res.data);
-            const calories = res.data.map((food) => food.calories);
-            const maxCal = Math.max(...calories);
-            console.log("Max calories found:", maxCal);
-            setMaxPossibleCalories(maxCal);
-            setMaxCalories(maxCal);
-          } else {
-            console.log("No foods received or empty array");
-            setFoods([]);
-            setMaxPossibleCalories(2000);
-            setMaxCalories(2000);
-          }
+        // If online and no cached data, try to fetch and cache
+        if (!foodsData && isOnline) {
+          const response = await apiService.getFoods();
+          foodsData = response;
         }
-      })
-      .catch((err) => {
-        console.error("Error fetching foods:", err);
-        if (err.response) {
-          console.error("Response error:", err.response.data);
+
+        if (mounted && Array.isArray(foodsData) && foodsData.length > 0) {
+          setFoods(foodsData);
+          const calories = foodsData.map((food) => food.calories);
+          const maxCal = Math.max(...calories);
+          console.log("Max calories found:", maxCal);
+          setMaxPossibleCalories(maxCal);
+          setMaxCalories(maxCal);
+        } else {
+          console.log("No foods available");
+          setFoods([]);
+          setMaxPossibleCalories(2000);
+          setMaxCalories(2000);
         }
-      })
-      .finally(() => {
+      } catch (err) {
+        console.error("Error loading foods:", err);
+      } finally {
         if (mounted) {
           setLoading(false);
         }
-      });
+      }
+    };
+
+    loadFoods();
 
     return () => {
       mounted = false;
@@ -84,10 +89,10 @@ export default function FoodList() {
     page * pageSize,
   );
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when search text or calorie filter changes
   useEffect(() => {
     setPage(1);
-  }, [searchText]); // Only reset page on search changes
+  }, [searchText, maxCalories]); // Reset page on either search or filter changes
 
   return (
     <>
