@@ -11,9 +11,14 @@ import {
   IonSegment,
   IonSegmentButton,
   IonToast,
+  IonFab,
+  IonFabButton,
+  IonIcon,
 } from "@ionic/react";
+import { add } from 'ionicons/icons';
 import axios from "axios";
 import { io } from "socket.io-client";
+import AddFoodModal from "../components/AddFoodModal";
 
 export default function MealList() {
   const { date } = useParams();
@@ -21,6 +26,7 @@ export default function MealList() {
   const [loading, setLoading] = useState(true);
   const [selectedMeal, setSelectedMeal] = useState("breakfast");
   const [socket, setSocket] = useState(null);
+  const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [notification, setNotification] = useState({
     isOpen: false,
     message: "",
@@ -89,6 +95,32 @@ export default function MealList() {
   if (meals && meals[selectedMeal] && meals[selectedMeal].foods) {
     foods = meals[selectedMeal].foods;
   }
+
+  const handleAddFood = async ({ foodId, quantity }) => {
+    try {
+      const response = await axios.post(
+        `http://localhost:4000/api/meals/${date}/${selectedMeal}`,
+        { foodId, quantity }
+      );
+      
+      // Update the meals state with the new food
+      setMeals(prev => ({
+        ...prev,
+        [selectedMeal]: response.data
+      }));
+
+      setNotification({
+        isOpen: true,
+        message: "Food added successfully!"
+      });
+    } catch (error) {
+      console.error("Error adding food:", error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to add food. Please try again."
+      });
+    }
+  };
 
   return (
     <IonContent>
@@ -166,6 +198,19 @@ export default function MealList() {
           </>
         )}
       </div>
+
+      <IonFab vertical="bottom" horizontal="end" slot="fixed">
+        <IonFabButton onClick={() => setIsAddFoodModalOpen(true)}>
+          <IonIcon icon={add} />
+        </IonFabButton>
+      </IonFab>
+
+      <AddFoodModal
+        isOpen={isAddFoodModalOpen}
+        onClose={() => setIsAddFoodModalOpen(false)}
+        onAddFood={handleAddFood}
+        mealType={selectedMeal}
+      />
     </IonContent>
   );
 }

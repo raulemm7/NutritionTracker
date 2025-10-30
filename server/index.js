@@ -85,6 +85,62 @@ app.get("/api/foods", authMiddleware, (req, res) => {
   res.json(db.foods);
 });
 
+// Add food to meal
+app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
+  const { date, meal } = req.params;
+  const { foodId, quantity } = req.body;
+  
+  if (!foodId || !quantity || !['breakfast', 'lunch', 'dinner'].includes(meal)) {
+    return res.status(400).json({ error: "Invalid request parameters" });
+  }
+
+  try {
+    const db = readDb();
+    
+    // Find the food item
+    const food = db.foods.find(f => f.id === foodId);
+    if (!food) {
+      return res.status(404).json({ error: "Food not found" });
+    }
+
+    // Initialize the date and meal if they don't exist
+    if (!db.meals[date]) {
+      db.meals[date] = {
+        userId: req.user.id,
+        [meal]: { time: new Date().toLocaleTimeString('en-US', { hour12: false }), foods: [] }
+      };
+    } else if (!db.meals[date][meal]) {
+      db.meals[date][meal] = {
+        time: new Date().toLocaleTimeString('en-US', { hour12: false }),
+        foods: []
+      };
+    }
+
+    // Add the food to the meal
+    const foodToAdd = {
+      id: food.id,
+      name: food.name,
+      calories: food.calories,
+      quantity: Number(quantity)
+    };
+
+    db.meals[date][meal].foods.push(foodToAdd);
+    writeDb(db);
+
+    // Emit socket event to notify other users
+    io.to(`user-${req.user.id}`).emit("mealUpdated", {
+      date,
+      meal,
+      userId: req.user.id
+    });
+
+    res.json(db.meals[date][meal]);
+  } catch (error) {
+    console.error("Error adding food to meal:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Simple login endpoint - returns JWT
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
