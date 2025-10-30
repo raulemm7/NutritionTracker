@@ -1,137 +1,131 @@
-import React, { useEffect, useState } from "react";
-import {
-  IonList,
-  IonItem,
-  IonLabel,
-  IonNote,
-  IonIcon,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonBadge,
-} from "@ionic/react";
-import {
-  informationCircle,
-  checkmarkCircle,
-  warningOutline,
-  notifications as notifyIcon,
-} from "ionicons/icons";
-import { getSocket } from "../utils/socket";
-
-const getIconForType = (type) => {
-  switch (type) {
-    case "notification":
-      return warningOutline;
-    case "new-log":
-      return checkmarkCircle;
-    case "welcome":
-      return notifyIcon;
-    case "date-change":
-      return informationCircle;
-    default:
-      return informationCircle;
-  }
-};
+import React, { useEffect, useState } from 'react';
+import { IonToast, IonBadge } from '@ionic/react';
+import { io } from 'socket.io-client';
+import { useNetworkStatus } from '../services/networkStatus.jsx';
+import apiService from '../services/api';
 
 export default function Notifications() {
-  const [events, setEvents] = useState([]);
+  const { isOnline } = useNetworkStatus();
+  const [socket, setSocket] = useState(null);
+  const [notification, setNotification] = useState({
+    isOpen: false,
+    message: '',
+    type: 'info',
+  });
+  const [pendingOperations, setPendingOperations] = useState(0);
 
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+    const newSocket = io('http://localhost:4000');
+    setSocket(newSocket);
 
-    socket.on("connect", () =>
-      setEvents((e) => [
-        {
-          type: "system",
-          message: "Connected to server",
-          timestamp: new Date().toISOString(),
-        },
-        ...e,
-      ]),
-    );
-    socket.on("welcome", (p) =>
-      setEvents((e) => [
-        {
-          type: "welcome",
-          message: p.message,
-          timestamp: new Date().toISOString(),
-        },
-        ...e,
-      ]),
-    );
-    socket.on("notification", (p) =>
-      setEvents((e) => [
-        {
-          type: "notification",
-          ...p,
-          timestamp: new Date().toISOString(),
-        },
-        ...e,
-      ]),
-    );
-    socket.on("new-log", (p) =>
-      setEvents((e) => [
-        {
-          type: "new-log",
-          message: `New log: ${p.name} (${p.calories} kcal)`,
-          timestamp: new Date().toISOString(),
-        },
-        ...e,
-      ]),
-    );
-    socket.on("userDateChanged", (data) =>
-      setEvents((e) => [
-        {
-          type: "date-change",
-          message: `An user changed date to ${data.date}`,
-          timestamp: new Date().toISOString(),
-        },
-        ...e,
-      ]),
-    );
+    const handleNotification = (data) => {
+      setNotification({
+        isOpen: true,
+        message: `${data.title}: ${data.message}`,
+        type: data.type || 'info',
+      });
+    };
 
-    return () => socket.disconnect();
+    newSocket.on('notification', handleNotification);
+
+    return () => {
+      newSocket.off('notification', handleNotification);
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // Monitor online/offline status changes
+  useEffect(() => {
+    if (!isOnline) {
+      setNotification({
+        isOpen: true,
+        message: 'You are offline. Changes will be saved locally.',
+        type: 'warning',
+      });
+    } else {
+      const pending = apiService.getPendingOperationsCount();
+      if (pending > 0) {
+        setNotification({
+          isOpen: true,
+          message: `Back online. Syncing ${pending} pending changes...`,
+          type: 'info',
+        });
+        apiService.processPendingOperations().then((results) => {
+          const failed = results.filter(r => !r.success).length;
+          if (failed > 0) {
+            setNotification({
+              isOpen: true,
+              message: `Sync completed with ${failed} errors`,
+              type: 'warning',
+            });
+          } else {
+            setNotification({
+              isOpen: true,
+              message: 'All changes synced successfully',
+              type: 'success',
+            });
+          }
+        });
+      } else {
+        setNotification({
+          isOpen: true,
+          message: 'Back online',
+          type: 'success',
+        });
+      }
+    }
+  }, [isOnline]);
+
+  // Monitor pending operations
+  useEffect(() => {
+    const checkPending = () => {
+      const count = apiService.getPendingOperationsCount();
+      setPendingOperations(count);
+    };
+
+    checkPending();
+    const interval = setInterval(checkPending, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Notifications</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-
-      <IonContent>
-        {events.length === 0 ? (
-          <div className="ion-padding ion-text-center">
-            <IonNote>No notifications yet</IonNote>
-          </div>
-        ) : (
-          <IonList>
-            {events.map((ev, idx) => (
-              <IonItem key={idx}>
-                <IonIcon
-                  icon={getIconForType(ev.type)}
-                  slot="start"
-                  color={ev.type === "notification" ? "warning" : "primary"}
-                />
-                <IonLabel>
-                  {ev.message || ev.title}
-                  <p>{new Date(ev.timestamp).toLocaleTimeString()}</p>
-                </IonLabel>
-                <IonBadge
-                  color={ev.type === "notification" ? "warning" : "primary"}
-                  slot="end"
-                >
-                  {ev.type}
-                </IonBadge>
-              </IonItem>
-            ))}
-          </IonList>
-        )}
-      </IonContent>
+      {!isOnline && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            background: '#f4f5f8', 
+            padding: '4px', 
+            textAlign: 'center',
+            zIndex: 1000
+          }}
+        >
+          <IonBadge color="warning">Offline</IonBadge>
+          {pendingOperations > 0 && (
+            <IonBadge 
+              color="primary" 
+              style={{ marginLeft: '8px' }}
+            >
+              {pendingOperations} pending
+            </IonBadge>
+          )}
+        </div>
+      )}
+      <IonToast
+        isOpen={notification.isOpen}
+        onDidDismiss={() => setNotification({ isOpen: false, message: '', type: 'info' })}
+        message={notification.message}
+        duration={3000}
+        position="top"
+        color={notification.type === 'success' ? 'success' : 
+               notification.type === 'warning' ? 'warning' : 
+               notification.type === 'error' ? 'danger' : 
+               'primary'}
+      />
     </>
   );
 }

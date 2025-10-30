@@ -16,9 +16,10 @@ import {
   IonIcon,
 } from "@ionic/react";
 import { add } from 'ionicons/icons';
-import axios from "axios";
 import { io } from "socket.io-client";
 import AddFoodModal from "../components/AddFoodModal";
+import apiService from "../services/api";
+import { useNetworkStatus } from "../services/networkStatus.jsx";
 
 export default function MealList() {
   const { date } = useParams();
@@ -62,11 +63,9 @@ export default function MealList() {
         setMeals(null);
         setSelectedMeal("breakfast");
 
-        const response = await axios.get(
-          `http://localhost:4000/api/meals/${date}`,
-        );
-        console.log("Fetched meals:", response.data);
-        setMeals(response.data);
+        const mealsData = await apiService.getMeals(date);
+        console.log("Fetched meals:", mealsData);
+        setMeals(mealsData);
 
         if (socket) {
           socket.emit("dateChange", date);
@@ -98,15 +97,12 @@ export default function MealList() {
 
   const handleAddFood = async ({ foodId, quantity }) => {
     try {
-      const response = await axios.post(
-        `http://localhost:4000/api/meals/${date}/${selectedMeal}`,
-        { foodId, quantity }
-      );
+      const mealData = await apiService.addFoodToMeal(date, selectedMeal, { foodId, quantity });
       
       // Update the meals state with the new food
       setMeals(prev => ({
         ...prev,
-        [selectedMeal]: response.data
+        [selectedMeal]: mealData
       }));
 
       setNotification({

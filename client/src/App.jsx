@@ -33,6 +33,9 @@ import MealDetail from "./pages/MealDetail";
 import Notifications from "./components/Notifications";
 import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./components/Auth";
+import { NetworkStatusProvider } from "./services/networkStatus.jsx";
+import axios from "axios";
+import LocalStorageService from "./services/localStorage";
 
 function getDateFromPath(path) {
   const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
@@ -58,6 +61,23 @@ function AppContent() {
   const [toastColor, setToastColor] = useState(() =>
     navigator.onLine ? "success" : "danger",
   );
+
+  // Effect: Load and cache foods on mount
+  useEffect(() => {
+    const loadFoods = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/api/foods');
+        if (response.data && Array.isArray(response.data)) {
+          LocalStorageService.setFoodsCache(response.data);
+          console.log('Foods cached successfully:', response.data.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error caching foods:', error);
+      }
+    };
+
+    loadFoods();
+  }, []);
 
   // Sync selectedDate with URL changes
   useEffect(() => {
@@ -238,11 +258,13 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <IonApp>
-        <IonReactRouter>
-          <AppContent />
-        </IonReactRouter>
-      </IonApp>
+      <NetworkStatusProvider>
+        <IonApp>
+          <IonReactRouter>
+            <AppContent />
+          </IonReactRouter>
+        </IonApp>
+      </NetworkStatusProvider>
     </AuthProvider>
   );
 }

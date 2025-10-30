@@ -15,7 +15,7 @@ import {
   IonBadge,
   IonSkeletonText,
 } from '@ionic/react';
-import axios from 'axios';
+import LocalStorageService from '../services/localStorage';
 
 export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
   const [foods, setFoods] = useState([]);
@@ -28,17 +28,21 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
   useEffect(() => {
     let mounted = true;
 
-    const fetchFoods = async () => {
+    const loadFoods = () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:4000/api/foods');
+        const cachedFoods = LocalStorageService.getFoodsCache();
         if (mounted) {
-          setFoods(response.data);
+          if (cachedFoods && cachedFoods.length > 0) {
+            setFoods(cachedFoods);
+          } else {
+            setError('No foods available. Please go online to load foods data.');
+          }
         }
       } catch (err) {
-        console.error('Error fetching foods:', err);
+        console.error('Error loading foods:', err);
         if (mounted) {
-          setError('Failed to load foods');
+          setError('Failed to load foods from cache');
         }
       } finally {
         if (mounted) {
@@ -48,7 +52,7 @@ export default function AddFoodModal({ isOpen, onClose, onAddFood, mealType }) {
     };
 
     if (isOpen) {
-      fetchFoods();
+      loadFoods();
     }
 
     return () => {

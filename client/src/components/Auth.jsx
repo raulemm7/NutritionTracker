@@ -50,6 +50,17 @@ export function AuthProvider({ children }) {
     const { initializeSocket } = await import("../utils/socket");
     initializeSocket(t);
 
+    // Load and cache foods data immediately after login
+    const { loadInitialData } = await import("../services/initialDataLoader");
+    try {
+      const foods = await loadInitialData();
+      console.log('Foods cached successfully:', foods.length, 'items');
+    } catch (error) {
+      console.error('Failed to cache foods:', error);
+      // Show error to user
+      alert('Failed to load foods data. Some features might not work offline.');
+    }
+
     return res.data.user;
   };
 
