@@ -51,3 +51,9 @@ ion-item {
   --padding-end: 8px;
   --padding-start: 8px;
 }
+
+.range-pin{
+  --pin-top: 25x;
+  white-space: nowrap;
+  max-width: 100%;
+}

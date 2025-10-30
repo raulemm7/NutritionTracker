@@ -11,7 +11,13 @@ import {
   IonBadge,
   IonSearchbar,
   IonSkeletonText,
+  IonButton,
+  IonIcon,
+  IonModal,
+  IonRange,
+  IonButtons
 } from "@ionic/react";
+import { filterOutline } from 'ionicons/icons';
 import axios from "axios";
 
 export default function FoodList() {
@@ -19,6 +25,8 @@ export default function FoodList() {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [maxCalories, setMaxCalories] = useState(500);
   const pageSize = 3;
 
   useEffect(() => {
@@ -32,7 +40,8 @@ export default function FoodList() {
   }, []);
 
   const filteredFoods = foods.filter((food) =>
-    food.name.toLowerCase().includes(searchText.toLowerCase()),
+    food.name.toLowerCase().includes(searchText.toLowerCase()) &&
+    food.calories <= maxCalories
   );
   const totalPages = Math.ceil(filteredFoods.length / pageSize);
   const paginatedFoods = filteredFoods.slice(
@@ -43,7 +52,8 @@ export default function FoodList() {
   // Reset to page 1 when search changes
   useEffect(() => {
     setPage(1);
-  }, [searchText]);
+    setMaxCalories(Math.max(...foods.map(food => food.calories)));
+  }, [searchText, maxCalories]);
 
   return (
     <>
@@ -54,11 +64,60 @@ export default function FoodList() {
       </IonHeader>
 
       <IonContent fullscreen className="ion-padding-bottom">
-        <IonSearchbar
-          value={searchText}
-          onIonChange={(e) => setSearchText(e.detail.value)}
-          placeholder="Search foods..."
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
+          <IonSearchbar
+            style={{ flex: 1 }}
+            value={searchText}
+            onIonChange={(e) => setSearchText(e.detail.value)}
+            placeholder="Search foods..."
+            animated={true}
+            debounce={300}
+          />
+          <IonButton 
+            fill="clear"
+            onClick={() => setIsFilterModalOpen(true)}
+          >
+            <IonIcon icon={filterOutline} />
+          </IonButton>
+        </div>
+
+        <IonModal 
+          isOpen={isFilterModalOpen} 
+          onDidDismiss={() => setIsFilterModalOpen(false)}
+        >
+          <IonHeader>
+            <IonToolbar>
+              <IonTitle>Filter Foods</IonTitle>
+              <IonButtons slot="end">
+                <IonButton onClick={() => setIsFilterModalOpen(false)}>
+                  Done
+                </IonButton>
+              </IonButtons>
+            </IonToolbar>
+          </IonHeader>
+          <IonContent className="ion-padding">
+            <h2>Maximum Calories</h2>
+            <IonItem lines="none">
+              <IonRange
+              className="range-pin"
+                min={0}
+                max={Math.max(...foods.map(food => food.calories))}
+                value={maxCalories}
+                onIonChange={e => setMaxCalories(e.detail.value)}
+                pin={true}
+                pinFormatter={(value) => `${value} kcal`}
+              >
+                <IonNote slot="start">0</IonNote>
+                <IonNote slot="end">{Math.max(...foods.map(food => food.calories))}</IonNote>
+              </IonRange>
+            </IonItem>
+            <div className="ion-text-center ion-padding">
+              <IonNote>
+                Showing foods with {maxCalories} calories or less
+              </IonNote>
+            </div>
+          </IonContent>
+        </IonModal>
         <IonList style={{ marginBottom: 0 }}>
           {loading ? (
             Array(5)
@@ -87,7 +146,7 @@ export default function FoodList() {
                     {food.fat}g
                   </p>
                 </IonLabel>
-                <IonBadge slot="end" color="primary">
+                <IonBadge slot="end" color={food.calories > maxCalories ? 'danger' : 'primary'}>
                   {food.calories} kcal
                 </IonBadge>
               </IonItem>
