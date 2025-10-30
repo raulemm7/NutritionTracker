@@ -36,6 +36,7 @@ import { AuthProvider, useAuth } from "./components/Auth";
 
 function getDateFromPath(path) {
   const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
+  // Only extract date from path if it matches, otherwise keep current date
   return match ? match[1] : new Date().toISOString().split("T")[0];
 }
 
@@ -58,9 +59,12 @@ function AppContent() {
 
   // Sync selectedDate with URL changes
   useEffect(() => {
-    const urlDate = getDateFromPath(location.pathname);
-    console.log("URL changed, new date:", urlDate);
-    setSelectedDate(urlDate);
+    // Only update selectedDate if we're on a meals route
+    if (location.pathname.includes('/meals/')) {
+      const urlDate = getDateFromPath(location.pathname);
+      console.log("URL changed, new date:", urlDate);
+      setSelectedDate(urlDate);
+    }
   }, [location.pathname]);
 
   // Effect: Initial online status and toast
@@ -151,41 +155,48 @@ function AppContent() {
             <Route exact path="/login">
               {user ? <Redirect to={`/meals/${selectedDate}`} /> : <Login />}
             </Route>
-            <Route exact path="/meals/:date">
-              {!user ? (
-                <Redirect to="/login" />
-              ) : (
-                <MealList key={selectedDate} />
-              )}
-            </Route>
-            <Route exact path="/meals/:date/:meal">
-              {!user ? <Redirect to="/login" /> : <MealDetail />}
-            </Route>
             <Route exact path="/foods">
               {!user ? <Redirect to="/login" /> : <FoodList />}
             </Route>
             <Route exact path="/notifications">
               {!user ? <Redirect to="/login" /> : <Notifications />}
             </Route>
+            <Route exact path="/meals/:date/:meal">
+              {!user ? <Redirect to="/login" /> : <MealDetail />}
+            </Route>
+            <Route exact path="/meals/:date">
+              {!user ? <Redirect to="/login" /> : <MealList key={selectedDate} />}
+            </Route>
             <Route exact path="/">
-              {!user ? (
-                <Redirect to="/login" />
-              ) : (
-                <Redirect to={`/meals/${selectedDate}`} />
-              )}
+              <Redirect to={user ? `/meals/${selectedDate}` : "/login"} />
+            </Route>
+            <Route>
+              <Redirect to={user ? `/meals/${selectedDate}` : "/login"} />
             </Route>
           </IonRouterOutlet>
 
           <IonTabBar slot="bottom">
-            <IonTabButton tab="meals" href={`/meals/${selectedDate}`}>
+            <IonTabButton 
+              tab="meals" 
+              onClick={() => history.push(`/meals/${selectedDate}`)}
+              selected={location.pathname.includes('/meals/')}
+            >
               <IonIcon icon={restaurantOutline} />
               <IonLabel>Meals</IonLabel>
             </IonTabButton>
-            <IonTabButton tab="foods" href="/foods">
+            <IonTabButton 
+              tab="foods" 
+              onClick={() => history.push('/foods')}
+              selected={location.pathname === '/foods'}
+            >
               <IonIcon icon={listOutline} />
               <IonLabel>Foods</IonLabel>
             </IonTabButton>
-            <IonTabButton tab="notifications" href="/notifications">
+            <IonTabButton 
+              tab="notifications" 
+              onClick={() => history.push('/notifications')}
+              selected={location.pathname === '/notifications'}
+            >
               <IonIcon icon={notificationsOutline} />
               <IonLabel>Alerts</IonLabel>
             </IonTabButton>
