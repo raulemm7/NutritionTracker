@@ -17,7 +17,7 @@ import {
   warningOutline,
   notifications as notifyIcon,
 } from "ionicons/icons";
-import { io } from "socket.io-client";
+import { getSocket } from "../utils/socket";
 
 const getIconForType = (type) => {
   switch (type) {
@@ -38,7 +38,9 @@ export default function Notifications() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    const socket = io("http://localhost:4000");
+    const socket = getSocket();
+    if (!socket) return;
+    
     socket.on("connect", () =>
       setEvents((e) => [
         {

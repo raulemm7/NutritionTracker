@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const authMiddleware = require("./middleware/auth");
 
 const app = express();
 app.use(cors());
@@ -20,24 +21,43 @@ const io = new Server(server, {
 
 const WS_SECRET = process.env.WS_SECRET || "CHANGE_THIS_SECRET";
 
+// WebSocket middleware for authentication
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error("Authentication error"));
+  }
+
+  try {
+    const decoded = jwt.verify(token, WS_SECRET);
+    socket.user = decoded;
+    next();
+  } catch (err) {
+    next(new Error("Authentication error"));
+  }
+});
+
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
-  socket.emit("welcome", { message: "Welcome to Nutrition Server" });
+  console.log("Client connected:", socket.id, "User:", socket.user.username);
+  socket.emit("welcome", { message: `Welcome ${socket.user.username}` });
+
+  // Join a room specific to this user
+  socket.join(`user-${socket.user.id}`);
 
   socket.on("dateChange", (date) => {
-    // Broadcast the date change to all clients
-    io.emit("userDateChanged", {
-      userId: socket.id,
+    // Only send to sockets in the same user's room
+    io.to(`user-${socket.user.id}`).emit("userDateChanged", {
+      userId: socket.user.id,
       date: date,
     });
 
-    // Emit a notification event for the alerts page
-    io.emit("notification", {
+    // Send notification only to the user's room
+    io.to(`user-${socket.user.id}`).emit("notification", {
       type: "date-change",
       title: "Date Changed",
       message: `Date changed to ${date}`,
       timestamp: new Date().toISOString(),
-      userId: socket.id,
+      userId: socket.user.id,
     });
   });
 
@@ -59,9 +79,12 @@ const writeDb = (data) => {
 };
 
 // GET foods list
-app.get("/api/foods", (req, res) => {
+app.get("/api/foods", authMiddleware, (req, res) => {
   const db = readDb();
-  res.json(db.foods);
+  const userFoods = db.foods.filter(
+    food => food.isPublic || food.userId === req.user.id
+  );
+  res.json(userFoods);
 });
 
 // Simple login endpoint - returns JWT
@@ -114,18 +137,30 @@ app.get("/api/foods/:id", (req, res) => {
 });
 
 // GET meals for a date
-app.get("/api/meals/:date", (req, res) => {
+app.get("/api/meals/:date", authMiddleware, (req, res) => {
   const db = readDb();
-  const meals = db.meals[req.params.date] || {
-    breakfast: { time: "08:00", foods: [] },
-    lunch: { time: "12:30", foods: [] },
-    dinner: { time: "19:00", foods: [] },
-  };
+  const meals = db.meals[req.params.date];
+  
+  // If no meals exist for this date, return empty template
+  if (!meals) {
+    return res.json({
+      userId: req.user.id,
+      breakfast: { time: "08:00", foods: [] },
+      lunch: { time: "12:30", foods: [] },
+      dinner: { time: "19:00", foods: [] },
+    });
+  }
+
+  // Only return meals if they belong to the authenticated user
+  if (meals.userId !== req.user.id) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
   res.json(meals);
 });
 
 // POST add food to a meal
-app.post("/api/meals/:date/:meal", (req, res) => {
+app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
   const { date, meal } = req.params;
   const { foodId, quantity } = req.body;
 
@@ -136,10 +171,13 @@ app.post("/api/meals/:date/:meal", (req, res) => {
   // Initialize date and meal if they don't exist
   if (!db.meals[date]) {
     db.meals[date] = {
+      userId: req.user.id,
       breakfast: { time: "08:00", foods: [] },
       lunch: { time: "12:30", foods: [] },
       dinner: { time: "19:00", foods: [] },
     };
+  } else if (db.meals[date].userId !== req.user.id) {
+    return res.status(403).json({ error: "Access denied" });
   }
 
   // Add food to meal
@@ -153,14 +191,18 @@ app.post("/api/meals/:date/:meal", (req, res) => {
   db.meals[date][meal].foods.push(mealEntry);
   writeDb(db);
 
-  // Notify clients
-  io.emit("meal-updated", { date, meal, foods: db.meals[date][meal].foods });
+  // Notify only the user who owns the meal
+  io.to(`user-${req.user.id}`).emit("meal-updated", { 
+    date, 
+    meal, 
+    foods: db.meals[date][meal].foods 
+  });
 
   res.status(201).json(mealEntry);
 });
 
 // PATCH update meal time
-app.patch("/api/meals/:date/:meal/time", (req, res) => {
+app.patch("/api/meals/:date/:meal/time", authMiddleware, (req, res) => {
   const { date, meal } = req.params;
   const { time } = req.body;
 
@@ -172,7 +214,7 @@ app.patch("/api/meals/:date/:meal/time", (req, res) => {
   db.meals[date][meal].time = time;
   writeDb(db);
 
-  io.emit("meal-time-updated", { date, meal, time });
+  io.to(`user-${req.user.id}`).emit("meal-time-updated", { date, meal, time });
   res.json({ time });
 });
 
