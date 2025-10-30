@@ -248,7 +248,7 @@ function AppContent() {
           isOpen={showToast}
           message={toastMessage}
           color={toastColor}
-          duration={isOnline ? 3000 : undefined}
+          duration={3000}
           position="top"
           animated={true}
           onDidDismiss={() => setShowToast(false)}
