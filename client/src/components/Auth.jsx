@@ -55,17 +55,17 @@ export function AuthProvider({ children }) {
       username,
       password,
     });
-    
+
     const t = res.data.token;
     const userData = res.data.user;
-    
+
     // Set up auth state
     LocalStorageService.setAuthToken(t);
     LocalStorageService.setUserId(userData.id);
     axios.defaults.headers.common["Authorization"] = `Bearer ${t}`;
     setToken(t);
     setUser(userData);
-    
+
     // Initialize socket connection with token
     const { initializeSocket } = await import("../utils/socket");
     initializeSocket(t);

@@ -85,8 +85,6 @@ app.get("/api/foods", authMiddleware, (req, res) => {
   res.json(db.foods);
 });
 
-
-
 // Simple login endpoint - returns JWT
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
@@ -140,7 +138,7 @@ app.get("/api/foods/:id", (req, res) => {
 app.get("/api/meals/:date", authMiddleware, (req, res) => {
   const userId = req.user.id;
   const db = readDb();
-  
+
   // Ensure we're only accessing the logged-in user's meals
   const userMeals = db.meals[userId];
   const dateMeals = userMeals ? userMeals[req.params.date] : null;
@@ -180,12 +178,12 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
       dinner: { time: "19:00", foods: [] },
     };
   }
-  
+
   // Initialize meal structure if it doesn't exist
   if (!db.meals[req.user.id][date][meal]) {
     db.meals[req.user.id][date][meal] = {
       time: new Date().toLocaleTimeString("en-US", { hour12: false }),
-      foods: []
+      foods: [],
     };
   }
 
@@ -216,7 +214,11 @@ app.patch("/api/meals/:date/:meal/time", authMiddleware, (req, res) => {
   const { time } = req.body;
 
   const db = readDb();
-  if (!db.meals[req.user.id] || !db.meals[req.user.id][date] || !db.meals[req.user.id][date][meal]) {
+  if (
+    !db.meals[req.user.id] ||
+    !db.meals[req.user.id][date] ||
+    !db.meals[req.user.id][date][meal]
+  ) {
     return res.status(404).json({ error: "Meal not found" });
   }
 

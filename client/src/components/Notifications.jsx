@@ -15,7 +15,11 @@ import apiService from "../services/api";
 export default function Notifications() {
   const { isOnline } = useNetworkStatus();
   const [socket, setSocket] = useState(null);
-  const [notification, setNotification] = useState({ isOpen: false, message: "", type: "info" });
+  const [notification, setNotification] = useState({
+    isOpen: false,
+    message: "",
+    type: "info",
+  });
   const [pendingOperations, setPendingOperations] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const pendingIntervalRef = useRef(null);
@@ -27,7 +31,9 @@ export default function Notifications() {
 
     const handleNotification = (data) => {
       if (!data) return;
-      const message = data.title ? `${data.title}: ${data.message || ""}` : data.message || "";
+      const message = data.title
+        ? `${data.title}: ${data.message || ""}`
+        : data.message || "";
       setNotification({ isOpen: true, message, type: data.type || "info" });
     };
 
@@ -66,21 +72,43 @@ export default function Notifications() {
         setPendingOperations(pending || 0);
 
         if (isOnline && pending > 0) {
-          setNotification({ isOpen: true, message: `Back online. Syncing ${pending} pending changes...`, type: "info" });
+          setNotification({
+            isOpen: true,
+            message: `Back online. Syncing ${pending} pending changes...`,
+            type: "info",
+          });
           const results = await apiService.processPendingOperations();
-          const failed = Array.isArray(results) ? results.filter((r) => !r.success).length : 0;
+          const failed = Array.isArray(results)
+            ? results.filter((r) => !r.success).length
+            : 0;
           if (failed > 0) {
-            setNotification({ isOpen: true, message: `Sync completed with ${failed} errors`, type: "warning" });
+            setNotification({
+              isOpen: true,
+              message: `Sync completed with ${failed} errors`,
+              type: "warning",
+            });
           } else {
-            setNotification({ isOpen: true, message: "All changes synced successfully", type: "success" });
+            setNotification({
+              isOpen: true,
+              message: "All changes synced successfully",
+              type: "success",
+            });
           }
           // refresh pending count
           const remaining = await apiService.getPendingOperationsCount();
           setPendingOperations(remaining || 0);
         } else if (!isOnline) {
-          setNotification({ isOpen: true, message: "You are offline. Changes will be saved locally.", type: "warning" });
+          setNotification({
+            isOpen: true,
+            message: "You are offline. Changes will be saved locally.",
+            type: "warning",
+          });
         } else if (isOnline) {
-          setNotification({ isOpen: true, message: "Back online", type: "success" });
+          setNotification({
+            isOpen: true,
+            message: "Back online",
+            type: "success",
+          });
         }
       } catch (err) {
         console.error("Notification sync error:", err);
@@ -107,7 +135,14 @@ export default function Notifications() {
   }, []);
 
   // Helper to get color based on type
-  const toastColor = (type) => (type === "success" ? "success" : type === "warning" ? "warning" : type === "error" ? "danger" : "primary");
+  const toastColor = (type) =>
+    type === "success"
+      ? "success"
+      : type === "warning"
+        ? "warning"
+        : type === "error"
+          ? "danger"
+          : "primary";
 
   return (
     <>
@@ -122,30 +157,85 @@ export default function Notifications() {
 
           {/* Offline status banner */}
           {!isOnline ? (
-            <div style={{ background: "#fff7e6", padding: 12, marginBottom: 16, borderRadius: 8, border: "1px solid #ffdb4d" }}>
+            <div
+              style={{
+                background: "#fff7e6",
+                padding: 12,
+                marginBottom: 16,
+                borderRadius: 8,
+                border: "1px solid #ffdb4d",
+              }}
+            >
               <IonBadge color="warning">Offline</IonBadge>
               {pendingOperations > 0 && (
-                <IonBadge color="primary" style={{ marginLeft: 8 }}>{pendingOperations} pending</IonBadge>
+                <IonBadge color="primary" style={{ marginLeft: 8 }}>
+                  {pendingOperations} pending
+                </IonBadge>
               )}
             </div>
           ) : (
             pendingOperations > 0 && (
-              <div style={{ background: "#e8f8f2", padding: 12, marginBottom: 16, borderRadius: 8, border: "1px solid #c6f6d9" }}>
+              <div
+                style={{
+                  background: "#e8f8f2",
+                  padding: 12,
+                  marginBottom: 16,
+                  borderRadius: 8,
+                  border: "1px solid #c6f6d9",
+                }}
+              >
                 <IonBadge color="primary">Pending</IonBadge>
-                <span style={{ marginLeft: 8 }}>{pendingOperations} pending operations</span>
+                <span style={{ marginLeft: 8 }}>
+                  {pendingOperations} pending operations
+                </span>
               </div>
             )
           )}
 
           {/* Notifications list */}
           {notifications.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: "#666", background: "#f5f5f5", borderRadius: 8 }}>No notifications</div>
+            <div
+              style={{
+                textAlign: "center",
+                padding: 32,
+                color: "#666",
+                background: "#f5f5f5",
+                borderRadius: 8,
+              }}
+            >
+              No notifications
+            </div>
           ) : (
             <div>
               {notifications.map((notif) => (
-                <div key={notif.id} style={{ padding: 12, marginBottom: 8, background: "#fff", borderRadius: 8, border: "1px solid #e0e0e0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div
+                  key={notif.id}
+                  style={{
+                    padding: 12,
+                    marginBottom: 8,
+                    background: "#fff",
+                    borderRadius: 8,
+                    border: "1px solid #e0e0e0",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <div>
-                    <IonBadge color={notif.type === "success" ? "success" : notif.type === "warning" ? "warning" : notif.type === "error" ? "danger" : "primary"} style={{ marginRight: 8 }}>{notif.type}</IonBadge>
+                    <IonBadge
+                      color={
+                        notif.type === "success"
+                          ? "success"
+                          : notif.type === "warning"
+                            ? "warning"
+                            : notif.type === "error"
+                              ? "danger"
+                              : "primary"
+                      }
+                      style={{ marginRight: 8 }}
+                    >
+                      {notif.type}
+                    </IonBadge>
                     <span>{notif.message}</span>
                   </div>
                   <small style={{ color: "#999" }}>{notif.timestamp}</small>
@@ -155,7 +245,16 @@ export default function Notifications() {
           )}
 
           {/* Toast for incoming notifications */}
-          <IonToast isOpen={notification.isOpen} message={notification.message} duration={3000} position="top" color={toastColor(notification.type)} onDidDismiss={() => setNotification({ isOpen: false, message: "", type: "info" })} />
+          <IonToast
+            isOpen={notification.isOpen}
+            message={notification.message}
+            duration={3000}
+            position="top"
+            color={toastColor(notification.type)}
+            onDidDismiss={() =>
+              setNotification({ isOpen: false, message: "", type: "info" })
+            }
+          />
         </div>
       </IonContent>
     </>

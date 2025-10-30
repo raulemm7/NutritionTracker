@@ -39,7 +39,7 @@ export default function FoodList() {
     const loadFoods = async () => {
       try {
         setLoading(true);
-        
+
         // First try to get from cache
         let foodsData = LocalStorageService.getFoodsCache();
 

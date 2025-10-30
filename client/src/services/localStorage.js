@@ -37,7 +37,7 @@ class LocalStorageService {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.FOODS_CACHE);
     localStorage.removeItem(STORAGE_KEYS.LAST_SYNC);
-    
+
     // Clear any potential leftover data
     for (const key in STORAGE_KEYS) {
       const fullKey = STORAGE_KEYS[key];
@@ -54,8 +54,10 @@ class LocalStorageService {
   static getPendingOperations() {
     const userId = this.getUserId();
     if (!userId) return [];
-    
-    const operations = localStorage.getItem(`${STORAGE_KEYS.PENDING_OPERATIONS}_${userId}`);
+
+    const operations = localStorage.getItem(
+      `${STORAGE_KEYS.PENDING_OPERATIONS}_${userId}`,
+    );
     return operations ? JSON.parse(operations) : [];
   }
 
@@ -94,21 +96,26 @@ class LocalStorageService {
   static getOfflineMeals() {
     const userId = this.getUserId();
     if (!userId) return {};
-    
-    const meals = localStorage.getItem(`${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`);
+
+    const meals = localStorage.getItem(
+      `${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`,
+    );
     return meals ? JSON.parse(meals) : {};
   }
 
   static setOfflineMeals(meals) {
     const userId = this.getUserId();
     if (!userId) return;
-    
-    localStorage.setItem(`${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`, JSON.stringify(meals));
+
+    localStorage.setItem(
+      `${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`,
+      JSON.stringify(meals),
+    );
   }
 
   static getOfflineMealsByDate(userId, date) {
     if (!userId) return null;
-    
+
     const meals = this.getOfflineMeals();
     return meals[date] || null;
   }
@@ -116,7 +123,7 @@ class LocalStorageService {
   static addOfflineMeal(date, mealType, mealData) {
     const userId = this.getUserId();
     if (!userId) return null;
-    
+
     const meals = this.getOfflineMeals();
     if (!meals[date]) {
       meals[date] = {};
