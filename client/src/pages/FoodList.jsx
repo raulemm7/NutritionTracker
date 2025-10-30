@@ -37,7 +37,7 @@ export default function FoodList() {
         if (mounted) {
           setFoods(res.data);
           // Set initial maxCalories to the highest calorie value
-          setMaxCalories(Math.max(...res.data.map(food => food.calories)));
+          setMaxCalories(Math.max(...res.data.map((food) => food.calories)));
         }
       })
       .catch((err) => console.error(err))

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   IonApp,
   IonRouterOutlet,
@@ -17,16 +17,22 @@ import {
   IonPage,
   IonContent,
   IonToast,
-} from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import { useHistory, useLocation, Redirect, Route } from 'react-router-dom';
-import { calendar, restaurantOutline, listOutline, notificationsOutline, logOutOutline } from 'ionicons/icons';
-import FoodList from './pages/FoodList';
-import MealList from './pages/MealList';
-import MealDetail from './pages/MealDetail';
-import Notifications from './components/Notifications';
-import Login from './pages/Login';
-import { AuthProvider, useAuth } from './components/Auth';
+} from "@ionic/react";
+import { IonReactRouter } from "@ionic/react-router";
+import { useHistory, useLocation, Redirect, Route } from "react-router-dom";
+import {
+  calendar,
+  restaurantOutline,
+  listOutline,
+  notificationsOutline,
+  logOutOutline,
+} from "ionicons/icons";
+import FoodList from "./pages/FoodList";
+import MealList from "./pages/MealList";
+import MealDetail from "./pages/MealDetail";
+import Notifications from "./components/Notifications";
+import Login from "./pages/Login";
+import { AuthProvider, useAuth } from "./components/Auth";
 
 function AppContent() {
   const { user, loading, logout } = useAuth();
@@ -44,8 +50,10 @@ function AppContent() {
   const [isDateOpen, setIsDateOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showToast, setShowToast] = useState(true); // Show on entry
-  const [toastMessage, setToastMessage] = useState(isOnline ? 'You are online' : 'You are offline');
-  const [toastColor, setToastColor] = useState(isOnline ? 'success' : 'danger');
+  const [toastMessage, setToastMessage] = useState(
+    isOnline ? "You are online" : "You are offline",
+  );
+  const [toastColor, setToastColor] = useState(isOnline ? "success" : "danger");
   const toastTimeout = useRef(null);
   const history = useHistory();
 
@@ -59,13 +67,13 @@ function AppContent() {
   // Show toast on entry for 3s if online, else stay until online
   useEffect(() => {
     if (isOnline) {
-      setToastMessage('You are online');
-      setToastColor('success');
+      setToastMessage("You are online");
+      setToastColor("success");
       setShowToast(true);
       toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
     } else {
-      setToastMessage('You are offline');
-      setToastColor('danger');
+      setToastMessage("You are offline");
+      setToastColor("danger");
       setShowToast(true);
       if (toastTimeout.current) clearTimeout(toastTimeout.current);
     }
@@ -81,23 +89,23 @@ function AppContent() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      setToastMessage('You are online');
-      setToastColor('success');
+      setToastMessage("You are online");
+      setToastColor("success");
       setShowToast(true);
       toastTimeout.current = setTimeout(() => setShowToast(false), 3000);
     };
     const handleOffline = () => {
       setIsOnline(false);
-      setToastMessage('You are offline');
-      setToastColor('danger');
+      setToastMessage("You are offline");
+      setToastColor("danger");
       setShowToast(true);
       if (toastTimeout.current) clearTimeout(toastTimeout.current);
     };
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
       if (toastTimeout.current) clearTimeout(toastTimeout.current);
     };
   }, []);
@@ -117,32 +125,33 @@ function AppContent() {
       <IonHeader>
         <IonToolbar>
           <IonTitle
-            style={
-              user
-              ? { paddingInlineStart: 20, textAlign: 'left' }
-              : {}
-            }
+            style={user ? { paddingInlineStart: 20, textAlign: "left" } : {}}
           >
-            Nutrify
+            {user ? `Welcome, ${user.username}` : "Nutrify"}
           </IonTitle>
 
           <IonButtons slot="end">
             {user && (
               <IonButton onClick={() => setIsDateOpen(true)}>
                 <IonIcon icon={calendar} slot="start" />
-                  <span style={{ marginLeft: 6 }}>{selectedDate}</span>
+                <span style={{ marginLeft: 6 }}>{selectedDate}</span>
               </IonButton>
             )}
-            
+
             {user && (
-              <IonButton onClick={() => { logout(); history.replace('/login'); }} aria-label="Logout">
+              <IonButton
+                onClick={() => {
+                  logout();
+                  history.replace("/login");
+                }}
+                aria-label="Logout"
+              >
                 <IonIcon icon={logOutOutline} />
               </IonButton>
             )}
           </IonButtons>
         </IonToolbar>
       </IonHeader>
-
 
       <IonContent>
         <IonTabs>
@@ -151,7 +160,11 @@ function AppContent() {
               {user ? <Redirect to={`/meals/${selectedDate}`} /> : <Login />}
             </Route>
             <Route exact path="/meals/:date">
-              {!user ? <Redirect to="/login" /> : <MealList key={selectedDate} />}
+              {!user ? (
+                <Redirect to="/login" />
+              ) : (
+                <MealList key={selectedDate} />
+              )}
             </Route>
             <Route exact path="/meals/:date/:meal">
               {!user ? <Redirect to="/login" /> : <MealDetail />}
@@ -163,7 +176,11 @@ function AppContent() {
               {!user ? <Redirect to="/login" /> : <Notifications />}
             </Route>
             <Route exact path="/">
-              {!user ? <Redirect to="/login" /> : <Redirect to={`/meals/${selectedDate}`} />}
+              {!user ? (
+                <Redirect to="/login" />
+              ) : (
+                <Redirect to={`/meals/${selectedDate}`} />
+              )}
             </Route>
           </IonRouterOutlet>
 
@@ -202,7 +219,7 @@ function AppContent() {
           position="top"
           animated={true}
           onDidDismiss={() => setShowToast(false)}
-          style={{ fontWeight: 'bold', fontSize: 16 }}
+          style={{ fontWeight: "bold", fontSize: 16 }}
         />
       </IonContent>
     </IonPage>
