@@ -48,7 +48,7 @@ export default function Login() {
               <IonLabel position="stacked">Username</IonLabel>
               <IonInput
                 value={username}
-                onIonChange={(e) => setUsername(e.detail.value)}
+                onIonInput={(e) => setUsername(e.detail.value)}
                 required
               />
             </IonItem>
@@ -57,7 +57,7 @@ export default function Login() {
               <IonInput
                 type="password"
                 value={password}
-                onIonChange={(e) => setPassword(e.detail.value)}
+                onIonInput={(e) => setPassword(e.detail.value)}
                 required
               />
             </IonItem>
