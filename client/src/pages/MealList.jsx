@@ -20,11 +20,14 @@ import {
   IonItemSliding,
   IonItemOptions,
   IonItemOption,
+  IonAlert,
 } from "@ionic/react";
-import { add, createOutline, checkmarkOutline, trashOutline, cameraOutline } from "ionicons/icons";
+import { add, createOutline, checkmarkOutline, trashOutline, cameraOutline, downloadOutline } from "ionicons/icons";
 import { io } from "socket.io-client";
 import axios from "axios";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { API_BASE_URL, SOCKET_URL } from "../config";
 import AddFoodModal from "../components/AddFoodModal";
 import apiService from "../services/api";
@@ -44,6 +47,11 @@ export default function MealList() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingQuantities, setEditingQuantities] = useState({});
   const [mealPhotos, setMealPhotos] = useState({}); // Now stores arrays of photos per meal
+  const [savePhotoAlert, setSavePhotoAlert] = useState({
+    isOpen: false,
+    photoData: null,
+    photoIndex: null,
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -428,6 +436,76 @@ export default function MealList() {
     });
   };
 
+  const handleSavePhotoClick = (photo, idx) => {
+    setSavePhotoAlert({
+      isOpen: true,
+      photoData: photo,
+      photoIndex: idx,
+    });
+  };
+
+  const savePhotoToGallery = async () => {
+    try {
+      const { photoData, photoIndex } = savePhotoAlert;
+      
+      // Extract base64 data and format
+      const base64Data = photoData.split(',')[1];
+      const format = photoData.match(/data:image\/(\w+);/)?.[1] || 'jpeg';
+      
+      const fileName = `Meal_${selectedMeal}_${new Date().toISOString().split('T')[0]}_${Date.now()}.${format}`;
+      
+      // First write to temp directory
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+      
+      console.log('File saved to cache:', savedFile.uri);
+      
+      // Then use Share API to save to Photos (iOS) or Gallery (Android)
+      // On iOS, user can tap "Save Image" from the share sheet
+      await Share.share({
+        title: 'Save Photo',
+        text: `Save ${selectedMeal} photo`,
+        url: savedFile.uri,
+        dialogTitle: 'Save to Photos',
+      });
+      
+      setNotification({
+        isOpen: true,
+        message: "Use 'Save Image' to add to Photos",
+      });
+      
+      console.log('Photo shared:', fileName);
+    } catch (error) {
+      console.error('Error saving photo:', error);
+      
+      // Fallback: download as data URL (works in browser)
+      if (error.message?.includes('not available') || error.message?.includes('not implemented')) {
+        const { photoData } = savePhotoAlert;
+        const link = document.createElement('a');
+        link.href = photoData;
+        link.download = `Meal_${selectedMeal}_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setNotification({
+          isOpen: true,
+          message: "Photo downloaded!",
+        });
+      } else {
+        setNotification({
+          isOpen: true,
+          message: "Failed to save photo: " + error.message,
+        });
+      }
+    } finally {
+      setSavePhotoAlert({ isOpen: false, photoData: null, photoIndex: null });
+    }
+  };
+
   return (
     <>
       <IonContent>
@@ -541,6 +619,29 @@ export default function MealList() {
                           display: 'block'
                         }}
                       />
+                      
+                      {/* Save button - always visible */}
+                      <IonButton
+                        fill="solid"
+                        color="success"
+                        size="small"
+                        style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          left: '4px',
+                          '--padding-start': '6px',
+                          '--padding-end': '6px',
+                          height: '28px',
+                          fontSize: '0.7rem',
+                          minWidth: '60px'
+                        }}
+                        onClick={() => handleSavePhotoClick(photo, idx)}
+                      >
+                        <IonIcon icon={downloadOutline} slot="start" style={{ fontSize: '14px' }} />
+                        Save
+                      </IonButton>
+                      
+                      {/* Delete button - only in edit mode */}
                       {isEditMode && (
                         <IonButton
                           fill="solid"
@@ -656,6 +757,23 @@ export default function MealList() {
         onClose={() => setIsAddFoodModalOpen(false)}
         onAddFood={handleAddFood}
         mealType={selectedMeal}
+      />
+
+      <IonAlert
+        isOpen={savePhotoAlert.isOpen}
+        onDidDismiss={() => setSavePhotoAlert({ isOpen: false, photoData: null, photoIndex: null })}
+        header="Save Photo"
+        message="Do you want to save this photo to your gallery?"
+        buttons={[
+          {
+            text: 'Cancel',
+            role: 'cancel',
+          },
+          {
+            text: 'Yes',
+            handler: savePhotoToGallery,
+          },
+        ]}
       />
     </IonContent>
     </>
