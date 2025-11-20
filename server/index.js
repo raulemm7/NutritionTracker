@@ -205,7 +205,7 @@ app.post("/api/meals/:date/:meal", authMiddleware, (req, res) => {
     foods: db.meals[req.user.id][date][meal].foods,
   });
 
-  res.status(201).json(mealEntry);
+  res.status(201).json(db.meals[req.user.id][date][meal]);
 });
 
 // PATCH update meal time
@@ -229,7 +229,72 @@ app.patch("/api/meals/:date/:meal/time", authMiddleware, (req, res) => {
   res.json({ time });
 });
 
+// DELETE remove food from meal
+app.delete("/api/meals/:date/:meal/foods/:foodId", authMiddleware, (req, res) => {
+  const { date, meal, foodId } = req.params;
+  const db = readDb();
+
+  if (
+    !db.meals[req.user.id] ||
+    !db.meals[req.user.id][date] ||
+    !db.meals[req.user.id][date][meal]
+  ) {
+    return res.status(404).json({ error: "Meal not found" });
+  }
+
+  const foods = db.meals[req.user.id][date][meal].foods;
+  const foodIndex = foods.findIndex(f => f.id === foodId);
+  
+  if (foodIndex === -1) {
+    return res.status(404).json({ error: "Food not found in meal" });
+  }
+
+  foods.splice(foodIndex, 1);
+  writeDb(db);
+
+  io.to(`user-${req.user.id}`).emit("meal-updated", {
+    date,
+    meal,
+    foods: db.meals[req.user.id][date][meal].foods,
+  });
+
+  res.json({ message: "Food removed successfully" });
+});
+
+// PATCH update food quantity in meal
+app.patch("/api/meals/:date/:meal/foods/:foodId", authMiddleware, (req, res) => {
+  const { date, meal, foodId } = req.params;
+  const { quantity } = req.body;
+  const db = readDb();
+
+  if (
+    !db.meals[req.user.id] ||
+    !db.meals[req.user.id][date] ||
+    !db.meals[req.user.id][date][meal]
+  ) {
+    return res.status(404).json({ error: "Meal not found" });
+  }
+
+  const foods = db.meals[req.user.id][date][meal].foods;
+  const food = foods.find(f => f.id === foodId);
+  
+  if (!food) {
+    return res.status(404).json({ error: "Food not found in meal" });
+  }
+
+  food.quantity = parseInt(quantity) || 1;
+  writeDb(db);
+
+  io.to(`user-${req.user.id}`).emit("meal-updated", {
+    date,
+    meal,
+    foods: db.meals[req.user.id][date][meal].foods,
+  });
+
+  res.json({ message: "Quantity updated successfully", food });
+});
+
 // (welcome message is emitted from the main connection handler)
 
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log("Server listening on", PORT));
+server.listen(PORT, () => console.log(`Server listening on ${PORT}`));

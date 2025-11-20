@@ -24,8 +24,9 @@ import {
   IonFab,
   IonFabButton,
   IonModal,
+  IonInput,
 } from "@ionic/react";
-import { timeOutline, addOutline, trashOutline } from "ionicons/icons";
+import { timeOutline, addOutline, trashOutline, createOutline, checkmarkOutline } from "ionicons/icons";
 import axios from "axios";
 
 export default function MealDetail() {
@@ -39,17 +40,27 @@ export default function MealDetail() {
   const [showAddFood, setShowAddFood] = useState(false);
   const [selectedFood, setSelectedFood] = useState("");
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingQuantities, setEditingQuantities] = useState({});
 
   useEffect(() => {
     let mounted = true;
     Promise.all([
       axios.get(`http://localhost:4000/api/meals/${date}`),
-      axios.get("http://localhost:4000/api/foods"),
+      axios.get(`http://localhost:4000/api/foods`),
     ])
       .then(([mealsRes, foodsRes]) => {
         if (mounted) {
           setMealData(mealsRes.data[meal]);
           setFoods(foodsRes.data);
+          // Initialize editing quantities
+          const quantities = {};
+          if (mealsRes.data[meal]?.foods) {
+            mealsRes.data[meal].foods.forEach((food, idx) => {
+              quantities[idx] = food.quantity;
+            });
+          }
+          setEditingQuantities(quantities);
         }
       })
       .catch((err) => console.error(err))
@@ -94,10 +105,48 @@ export default function MealDetail() {
   };
 
   const removeFood = (index) => {
-    const newFoods = [...mealData.foods];
-    newFoods.splice(index, 1);
-    setMealData((prev) => ({ ...prev, foods: newFoods }));
-    showToastMessage("Food removed");
+    const foodToRemove = mealData.foods[index];
+    
+    axios
+      .delete(`http://localhost:4000/api/meals/${date}/${meal}/foods/${foodToRemove.id}`)
+      .then(() => {
+        const newFoods = [...mealData.foods];
+        newFoods.splice(index, 1);
+        setMealData((prev) => ({ ...prev, foods: newFoods }));
+        
+        // Update editing quantities
+        const newQuantities = {};
+        newFoods.forEach((food, idx) => {
+          newQuantities[idx] = food.quantity;
+        });
+        setEditingQuantities(newQuantities);
+        
+        showToastMessage("Food removed");
+      })
+      .catch(() => {
+        showToastMessage("Error removing food");
+      });
+  };
+
+  const updateQuantity = (index, newQuantity) => {
+    const quantity = parseInt(newQuantity) || 1;
+    
+    axios
+      .patch(`http://localhost:4000/api/meals/${date}/${meal}/foods/${mealData.foods[index].id}`, { quantity })
+      .then(() => {
+        const newFoods = [...mealData.foods];
+        newFoods[index].quantity = quantity;
+        setMealData((prev) => ({ ...prev, foods: newFoods }));
+        setEditingQuantities(prev => ({ ...prev, [index]: quantity }));
+        showToastMessage("Quantity updated");
+      })
+      .catch(() => {
+        showToastMessage("Error updating quantity");
+      });
+  };
+
+  const toggleEditMode = () => {
+    setIsEditMode(!isEditMode);
   };
 
   const showToastMessage = (message) => {
@@ -127,6 +176,9 @@ export default function MealDetail() {
             <IonButton onClick={() => setShowTimePicker(true)}>
               <IonIcon slot="icon-only" icon={timeOutline} />
             </IonButton>
+            <IonButton onClick={toggleEditMode}>
+              <IonIcon slot="icon-only" icon={isEditMode ? checkmarkOutline : createOutline} />
+            </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -138,19 +190,37 @@ export default function MealDetail() {
 
         <IonList>
           {mealData.foods.map((food, idx) => (
-            <IonItemSliding key={idx}>
+            <IonItemSliding key={idx} disabled={!isEditMode}>
               <IonItem>
                 <IonLabel>
                   {food.name}
                   <p>{food.calories * food.quantity} kcal</p>
                 </IonLabel>
-                <IonNote slot="end">x{food.quantity}</IonNote>
+                {isEditMode ? (
+                  <IonInput
+                    type="number"
+                    value={editingQuantities[idx]}
+                    placeholder="Qty"
+                    style={{ maxWidth: "80px", textAlign: "right" }}
+                    onIonChange={(e) => setEditingQuantities(prev => ({ ...prev, [idx]: e.detail.value }))}
+                    onIonBlur={(e) => {
+                      const newQty = parseInt(e.detail.value) || 1;
+                      if (newQty !== food.quantity) {
+                        updateQuantity(idx, newQty);
+                      }
+                    }}
+                  />
+                ) : (
+                  <IonNote slot="end">x{food.quantity}</IonNote>
+                )}
               </IonItem>
-              <IonItemOptions side="end">
-                <IonItemOption color="danger" onClick={() => removeFood(idx)}>
-                  <IonIcon slot="icon-only" icon={trashOutline} />
-                </IonItemOption>
-              </IonItemOptions>
+              {isEditMode && (
+                <IonItemOptions side="end">
+                  <IonItemOption color="danger" onClick={() => removeFood(idx)}>
+                    <IonIcon slot="icon-only" icon={trashOutline} />
+                  </IonItemOption>
+                </IonItemOptions>
+              )}
             </IonItemSliding>
           ))}
         </IonList>

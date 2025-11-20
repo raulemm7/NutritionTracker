@@ -130,7 +130,7 @@ class LocalStorageService {
     }
     meals[date][mealType] = mealData;
     this.setOfflineMeals(meals);
-    return meals[date];
+    return meals[date][mealType];
   }
 
   // Last sync timestamp
