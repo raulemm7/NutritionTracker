@@ -10,7 +10,8 @@ const authMiddleware = require("./middleware/auth");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increase limit for photos
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -319,28 +320,39 @@ app.post("/api/meals/:date/:meal/photo", authMiddleware, (req, res) => {
     };
   }
 
-  // Save photo data
-  db.meals[req.user.id][date][meal].photo = photo;
+  // Initialize photos array if doesn't exist
+  if (!db.meals[req.user.id][date][meal].photos) {
+    db.meals[req.user.id][date][meal].photos = [];
+  }
+
+  // Add photo to array
+  db.meals[req.user.id][date][meal].photos.push(photo);
   writeDb(db);
 
-  io.to(`user-${req.user.id}`).emit("meal-photo-updated", { date, meal, photo });
+  io.to(`user-${req.user.id}`).emit("meal-photo-updated", { 
+    date, 
+    meal, 
+    photos: db.meals[req.user.id][date][meal].photos 
+  });
   res.json({ message: "Photo saved successfully" });
 });
 
-// DELETE meal photo
-app.delete("/api/meals/:date/:meal/photo", authMiddleware, (req, res) => {
-  const { date, meal } = req.params;
+// DELETE meal photo by index
+app.delete("/api/meals/:date/:meal/photo/:photoIndex", authMiddleware, (req, res) => {
+  const { date, meal, photoIndex } = req.params;
   const db = readDb();
 
   if (
     db.meals[req.user.id] &&
     db.meals[req.user.id][date] &&
-    db.meals[req.user.id][date][meal]
+    db.meals[req.user.id][date][meal] &&
+    db.meals[req.user.id][date][meal].photos
   ) {
-    delete db.meals[req.user.id][date][meal].photo;
+    const index = parseInt(photoIndex);
+    db.meals[req.user.id][date][meal].photos.splice(index, 1);
     writeDb(db);
     
-    io.to(`user-${req.user.id}`).emit("meal-photo-deleted", { date, meal });
+    io.to(`user-${req.user.id}`).emit("meal-photo-deleted", { date, meal, photoIndex: index });
   }
 
   res.json({ message: "Photo deleted successfully" });
@@ -349,4 +361,8 @@ app.delete("/api/meals/:date/:meal/photo", authMiddleware, (req, res) => {
 // (welcome message is emitted from the main connection handler)
 
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+const HOST = '0.0.0.0'; // Listen on all network interfaces
+server.listen(PORT, HOST, () => {
+  console.log(`Server listening on ${HOST}:${PORT}`);
+  console.log(`Access from network: http://192.168.100.69:${PORT}`);
+});

@@ -8,6 +8,7 @@ import {
   IonTitle,
 } from "@ionic/react";
 import { io } from "socket.io-client";
+import { SOCKET_URL } from "../config";
 import { useNetworkStatus } from "../services/networkStatus.jsx";
 import apiService from "../services/api";
 
@@ -26,7 +27,7 @@ export default function Notifications() {
 
   // Socket setup
   useEffect(() => {
-    const newSocket = io("http://localhost:4000");
+    const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
     const handleNotification = (data) => {

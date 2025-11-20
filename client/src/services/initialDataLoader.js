@@ -1,10 +1,11 @@
 import LocalStorageService from "./localStorage";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 export async function loadInitialData() {
   try {
     console.log("Fetching and caching foods data...");
-    const foodsResponse = await axios.get("http://localhost:4000/api/foods");
+    const foodsResponse = await axios.get(`${API_BASE_URL}/foods`);
     const foods = foodsResponse.data;
 
     if (!Array.isArray(foods) || foods.length === 0) {

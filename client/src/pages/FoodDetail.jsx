@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 export default function FoodDetail() {
   const { id } = useParams();
@@ -11,7 +12,7 @@ export default function FoodDetail() {
   useEffect(() => {
     let mounted = true;
     axios
-      .get(`http://localhost:4000/api/foods/${id}`)
+      .get(`${API_BASE_URL}/foods/${id}`)
       .then((res) => mounted && setFood(res.data))
       .catch((err) => console.error(err))
       .finally(() => mounted && setLoading(false));
@@ -20,7 +21,7 @@ export default function FoodDetail() {
 
   function addLog() {
     axios
-      .post("http://localhost:4000/api/logs", {
+      .post(`${API_BASE_URL}/logs`, {
         foodId: id,
         name: food.name,
         calories: food.calories,

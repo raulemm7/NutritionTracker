@@ -25,6 +25,7 @@ import { add, createOutline, checkmarkOutline, trashOutline, cameraOutline } fro
 import { io } from "socket.io-client";
 import axios from "axios";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { API_BASE_URL, SOCKET_URL } from "../config";
 import AddFoodModal from "../components/AddFoodModal";
 import apiService from "../services/api";
 import { useNetworkStatus } from "../services/networkStatus.jsx";
@@ -42,10 +43,10 @@ export default function MealList() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingQuantities, setEditingQuantities] = useState({});
-  const [mealPhotos, setMealPhotos] = useState({});
+  const [mealPhotos, setMealPhotos] = useState({}); // Now stores arrays of photos per meal
 
   useEffect(() => {
-    const newSocket = io("http://localhost:4000");
+    const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
     const handleUserDateChanged = (data) => {
@@ -87,9 +88,9 @@ export default function MealList() {
               quantities[`${mealType}-${idx}`] = food.quantity;
             });
           }
-          // Load photos from server data
-          if (mealsData[mealType]?.photo) {
-            photos[mealType] = mealsData[mealType].photo;
+          // Load photos array from server data
+          if (mealsData[mealType]?.photos && Array.isArray(mealsData[mealType].photos)) {
+            photos[mealType] = mealsData[mealType].photos;
           }
         });
         setEditingQuantities(quantities);
@@ -98,10 +99,18 @@ export default function MealList() {
         const savedPhotos = localStorage.getItem(`meal_photos_${date}`);
         if (savedPhotos) {
           const localPhotos = JSON.parse(savedPhotos);
-          setMealPhotos({ ...localPhotos, ...photos }); // Server photos override local
-        } else {
-          setMealPhotos(photos);
+          // Merge: keep server photos and add any local ones not on server
+          Object.keys(localPhotos).forEach(mealType => {
+            if (!photos[mealType]) {
+              photos[mealType] = localPhotos[mealType];
+            } else {
+              // Merge arrays, avoiding duplicates
+              const combined = [...photos[mealType], ...localPhotos[mealType]];
+              photos[mealType] = [...new Set(combined)];
+            }
+          });
         }
+        setMealPhotos(photos);
 
         if (socket) {
           socket.emit("dateChange", date);
@@ -178,7 +187,7 @@ export default function MealList() {
 
   const removeFood = async (foodId, idx) => {
     try {
-      await axios.delete(`http://localhost:4000/api/meals/${date}/${selectedMeal}/foods/${foodId}`);
+      await axios.delete(`${API_BASE_URL}/meals/${date}/${selectedMeal}/foods/${foodId}`);
       
       const newFoods = [...foods];
       newFoods.splice(idx, 1);
@@ -208,7 +217,7 @@ export default function MealList() {
     const quantity = parseInt(newQuantity) || 1;
     
     try {
-      await axios.patch(`http://localhost:4000/api/meals/${date}/${selectedMeal}/foods/${foodId}`, { quantity });
+      await axios.patch(`${API_BASE_URL}/meals/${date}/${selectedMeal}/foods/${foodId}`, { quantity });
       
       const newFoods = [...foods];
       newFoods[idx].quantity = quantity;
@@ -240,17 +249,69 @@ export default function MealList() {
     try {
       const photo = await Camera.getPhoto({
         resultType: CameraResultType.DataUrl,
-        source: CameraSource.Camera,
+        source: CameraSource.Camera, // Force camera (will use webcam in browser)
+        quality: 80,
+        width: 800,
+        allowEditing: false,
+        promptLabelHeader: 'Take a Photo',
+        promptLabelPhoto: 'From Gallery',
+        promptLabelPicture: 'Take Picture',
+      });
+
+      const photoData = photo.dataUrl;
+      
+      // Add to photos array
+      const updatedPhotos = {
+        ...mealPhotos,
+        [selectedMeal]: [...(mealPhotos[selectedMeal] || []), photoData],
+      };
+      setMealPhotos(updatedPhotos);
+      
+      // Save to localStorage (device storage)
+      localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
+      
+      // Upload to server
+      try {
+        await axios.post(`http://localhost:4000/api/meals/${date}/${selectedMeal}/photo`, {
+          photo: photoData,
+        });
+        setNotification({
+          isOpen: true,
+          message: "Photo captured and uploaded!",
+        });
+      } catch (uploadError) {
+        console.warn("Failed to upload photo, saved locally:", uploadError);
+        setNotification({
+          isOpen: true,
+          message: "Photo saved locally (will upload when online)",
+        });
+      }
+    } catch (error) {
+      if (error.message !== 'User cancelled photos app') {
+        console.error("Error taking photo:", error);
+        setNotification({
+          isOpen: true,
+          message: "Failed to take photo.",
+        });
+      }
+    }
+  };
+
+  const uploadMealPhoto = async () => {
+    try {
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Photos, // Open gallery/file picker
         quality: 80,
         width: 800,
       });
 
       const photoData = photo.dataUrl;
       
-      // Save to state
+      // Add to photos array
       const updatedPhotos = {
         ...mealPhotos,
-        [selectedMeal]: photoData,
+        [selectedMeal]: [...(mealPhotos[selectedMeal] || []), photoData],
       };
       setMealPhotos(updatedPhotos);
       
@@ -274,22 +335,27 @@ export default function MealList() {
         });
       }
     } catch (error) {
-      console.error("Error taking photo:", error);
+      console.error("Error uploading photo:", error);
       setNotification({
         isOpen: true,
-        message: "Failed to take photo.",
+        message: "Failed to upload photo.",
       });
     }
   };
 
-  const deleteMealPhoto = () => {
+  const deleteMealPhoto = (photoIndex) => {
     const updatedPhotos = { ...mealPhotos };
-    delete updatedPhotos[selectedMeal];
+    if (updatedPhotos[selectedMeal]) {
+      updatedPhotos[selectedMeal] = updatedPhotos[selectedMeal].filter((_, idx) => idx !== photoIndex);
+      if (updatedPhotos[selectedMeal].length === 0) {
+        delete updatedPhotos[selectedMeal];
+      }
+    }
     setMealPhotos(updatedPhotos);
     localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
     
-    // Delete from server
-    axios.delete(`http://localhost:4000/api/meals/${date}/${selectedMeal}/photo`)
+    // Delete from server (send the photo index or data)
+    axios.delete(`${API_BASE_URL}/meals/${date}/${selectedMeal}/photo/${photoIndex}`)
       .catch(err => console.warn("Failed to delete photo from server:", err));
     
     setNotification({
@@ -386,64 +452,82 @@ export default function MealList() {
               )}
             </div>
 
-            {/* Meal Photo Section */}
-            {mealPhotos[selectedMeal] && (
-              <div style={{ 
-                marginBottom: 16, 
-                position: 'relative',
-                borderRadius: '8px',
-                overflow: 'hidden'
-              }}>
-                <img 
-                  src={mealPhotos[selectedMeal]} 
-                  alt={`${selectedMeal} photo`}
-                  style={{ 
-                    width: '100%', 
-                    maxHeight: '300px', 
-                    objectFit: 'cover',
-                    display: 'block'
-                  }}
-                />
-                {isEditMode && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    display: 'flex',
-                    gap: '8px'
-                  }}>
-                    <IonButton
-                      fill="solid"
-                      color="primary"
-                      size="small"
-                      onClick={takeMealPhoto}
-                    >
-                      Retake
-                    </IonButton>
-                    <IonButton
-                      fill="solid"
-                      color="danger"
-                      size="small"
-                      onClick={deleteMealPhoto}
-                    >
-                      Delete
-                    </IonButton>
-                  </div>
-                )}
+            {/* Meal Photos Gallery */}
+            {mealPhotos[selectedMeal] && mealPhotos[selectedMeal].length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                  gap: '8px',
+                }}>
+                  {mealPhotos[selectedMeal].map((photo, idx) => (
+                    <div key={idx} style={{ 
+                      position: 'relative',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      aspectRatio: '1',
+                    }}>
+                      <img 
+                        src={photo} 
+                        alt={`${selectedMeal} photo ${idx + 1}`}
+                        style={{ 
+                          width: '100%', 
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block'
+                        }}
+                      />
+                      {isEditMode && (
+                        <IonButton
+                          fill="solid"
+                          color="danger"
+                          size="small"
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            '--padding-start': '8px',
+                            '--padding-end': '8px',
+                            height: '28px',
+                            fontSize: '0.75rem'
+                          }}
+                          onClick={() => deleteMealPhoto(idx)}
+                        >
+                          ×
+                        </IonButton>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Camera Button in Edit Mode */}
-            {isEditMode && !mealPhotos[selectedMeal] && (
-              <IonButton
-                expand="block"
-                fill="outline"
-                onClick={takeMealPhoto}
-                style={{ marginBottom: 16 }}
-              >
-                <IonIcon slot="start" icon={cameraOutline} />
-                Take Photo of {selectedMeal}
-              </IonButton>
+            {/* Camera & Upload Buttons in Edit Mode */}
+            {isEditMode && (
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                marginBottom: 16 
+              }}>
+                <IonButton
+                  expand="block"
+                  fill="outline"
+                  onClick={takeMealPhoto}
+                  style={{ flex: 1 }}
+                >
+                  <IonIcon slot="start" icon={cameraOutline} />
+                  Take Photo
+                </IonButton>
+                <IonButton
+                  expand="block"
+                  fill="outline"
+                  onClick={uploadMealPhoto}
+                  style={{ flex: 1 }}
+                >
+                  <IonIcon slot="start" icon={add} />
+                  Upload Photo
+                </IonButton>
+              </div>
             )}
 
             {!foods || foods.length === 0 ? (

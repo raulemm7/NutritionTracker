@@ -28,6 +28,7 @@ import {
 } from "@ionic/react";
 import { timeOutline, addOutline, trashOutline, createOutline, checkmarkOutline } from "ionicons/icons";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 export default function MealDetail() {
   const { date, meal } = useParams();
@@ -46,8 +47,8 @@ export default function MealDetail() {
   useEffect(() => {
     let mounted = true;
     Promise.all([
-      axios.get(`http://localhost:4000/api/meals/${date}`),
-      axios.get(`http://localhost:4000/api/foods`),
+      axios.get(`${API_BASE_URL}/meals/${date}`),
+      axios.get(`${API_BASE_URL}/foods`),
     ])
       .then(([mealsRes, foodsRes]) => {
         if (mounted) {
@@ -73,7 +74,7 @@ export default function MealDetail() {
   const handleTimeChange = (value) => {
     const time = value.split("T")[1].substring(0, 5);
     axios
-      .patch(`http://localhost:4000/api/meals/${date}/${meal}/time`, { time })
+      .patch(`${API_BASE_URL}/meals/${date}/${meal}/time`, { time })
       .then(() => {
         setMealData((prev) => ({ ...prev, time }));
         setShowTimePicker(false);
@@ -86,7 +87,7 @@ export default function MealDetail() {
     if (!selectedFood) return;
 
     axios
-      .post(`http://localhost:4000/api/meals/${date}/${meal}`, {
+      .post(`${API_BASE_URL}/meals/${date}/${meal}`, {
         foodId: selectedFood,
         quantity: 1,
       })
@@ -108,7 +109,7 @@ export default function MealDetail() {
     const foodToRemove = mealData.foods[index];
     
     axios
-      .delete(`http://localhost:4000/api/meals/${date}/${meal}/foods/${foodToRemove.id}`)
+      .delete(`${API_BASE_URL}/meals/${date}/${meal}/foods/${foodToRemove.id}`)
       .then(() => {
         const newFoods = [...mealData.foods];
         newFoods.splice(index, 1);
@@ -132,7 +133,7 @@ export default function MealDetail() {
     const quantity = parseInt(newQuantity) || 1;
     
     axios
-      .patch(`http://localhost:4000/api/meals/${date}/${meal}/foods/${mealData.foods[index].id}`, { quantity })
+      .patch(`${API_BASE_URL}/meals/${date}/${meal}/foods/${mealData.foods[index].id}`, { quantity })
       .then(() => {
         const newFoods = [...mealData.foods];
         newFoods[index].quantity = quantity;

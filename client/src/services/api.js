@@ -1,5 +1,6 @@
 import axios from "axios";
 import LocalStorageService from "./localStorage";
+import { API_BASE_URL } from "../config";
 
 // Operation types
 export const OPERATION_TYPES = {
@@ -10,7 +11,7 @@ export const OPERATION_TYPES = {
 
 class ApiService {
   constructor() {
-    this.baseURL = "http://localhost:4000/api";
+    this.baseURL = API_BASE_URL;
     this.isOnline = navigator.onLine;
 
     // Listen for online/offline changes

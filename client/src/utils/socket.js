@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { SOCKET_URL } from "../config";
 
 let socket = null;
 let currentToken = null;
@@ -13,7 +14,7 @@ export function initializeSocket(token) {
   }
 
   currentToken = token;
-  socket = io("http://localhost:4000", {
+  socket = io(SOCKET_URL, {
     auth: {
       token: token,
     },

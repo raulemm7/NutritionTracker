@@ -66,7 +66,7 @@ function AppContent() {
   useEffect(() => {
     const loadFoods = async () => {
       try {
-        const response = await axios.get("http://localhost:4000/api/foods");
+        const response = await axios.get(`${API_BASE_URL}/foods`);
         if (response.data && Array.isArray(response.data)) {
           LocalStorageService.setFoodsCache(response.data);
           console.log(

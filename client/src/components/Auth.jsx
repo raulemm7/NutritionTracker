@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 import LocalStorageService from "../services/localStorage";
 
 const AuthContext = createContext();
@@ -31,7 +32,7 @@ export function AuthProvider({ children }) {
 
     // verify with server
     axios
-      .get("http://localhost:4000/api/verify")
+      .get(`${API_BASE_URL}/verify`)
       .then((res) => {
         setUser(res.data.user);
         setToken(t);
@@ -51,7 +52,7 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (username, password) => {
-    const res = await axios.post("http://localhost:4000/api/login", {
+    const res = await axios.post(`${API_BASE_URL}/login`, {
       username,
       password,
     });
