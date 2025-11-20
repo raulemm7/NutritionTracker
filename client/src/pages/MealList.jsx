@@ -46,7 +46,10 @@ export default function MealList() {
   const [mealPhotos, setMealPhotos] = useState({}); // Now stores arrays of photos per meal
 
   useEffect(() => {
-    const newSocket = io(SOCKET_URL);
+    const token = localStorage.getItem('authToken');
+    const newSocket = io(SOCKET_URL, {
+      auth: { token }
+    });
     setSocket(newSocket);
 
     const handleUserDateChanged = (data) => {
@@ -58,13 +61,25 @@ export default function MealList() {
       }
     };
 
+    const handleMealPhotoUpdated = (data) => {
+      console.log('Photo updated via socket:', data);
+      if (data.date === date) {
+        setMealPhotos(prev => ({
+          ...prev,
+          [data.meal]: data.photos
+        }));
+      }
+    };
+
     newSocket.on("userDateChanged", handleUserDateChanged);
+    newSocket.on("meal-photo-updated", handleMealPhotoUpdated);
 
     return () => {
       newSocket.off("userDateChanged", handleUserDateChanged);
+      newSocket.off("meal-photo-updated", handleMealPhotoUpdated);
       newSocket.disconnect();
     };
-  }, []);
+  }, [date]);
 
   useEffect(() => {
     console.log("Date changed to:", date);
@@ -95,21 +110,7 @@ export default function MealList() {
         });
         setEditingQuantities(quantities);
 
-        // Load photos from localStorage (fallback/merge with server)
-        const savedPhotos = localStorage.getItem(`meal_photos_${date}`);
-        if (savedPhotos) {
-          const localPhotos = JSON.parse(savedPhotos);
-          // Merge: keep server photos and add any local ones not on server
-          Object.keys(localPhotos).forEach(mealType => {
-            if (!photos[mealType]) {
-              photos[mealType] = localPhotos[mealType];
-            } else {
-              // Merge arrays, avoiding duplicates
-              const combined = [...photos[mealType], ...localPhotos[mealType]];
-              photos[mealType] = [...new Set(combined)];
-            }
-          });
-        }
+        // Photos now come only from server (localStorage too limited for images)
         setMealPhotos(photos);
 
         if (socket) {
@@ -250,8 +251,9 @@ export default function MealList() {
       const photo = await Camera.getPhoto({
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera, // Force camera (will use webcam in browser)
-        quality: 80,
+        quality: 50,
         width: 800,
+        height: 800,
         allowEditing: false,
         promptLabelHeader: 'Take a Photo',
         promptLabelPhoto: 'From Gallery',
@@ -259,32 +261,58 @@ export default function MealList() {
       });
 
       const photoData = photo.dataUrl;
+      const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('authToken');
       
-      // Add to photos array
-      const updatedPhotos = {
-        ...mealPhotos,
-        [selectedMeal]: [...(mealPhotos[selectedMeal] || []), photoData],
-      };
-      setMealPhotos(updatedPhotos);
-      
-      // Save to localStorage (device storage)
-      localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
-      
-      // Upload to server
+      // Upload to server first (before saving locally to avoid localStorage quota)
       try {
-        await axios.post(`http://localhost:4000/api/meals/${date}/${selectedMeal}/photo`, {
-          photo: photoData,
-        });
+        const photoSizeMB = (photoData.length / (1024 * 1024)).toFixed(2);
+        console.log(`Uploading photo for ${selectedMeal}, user: ${userId}`);
+        console.log(`Token exists: ${!!token}`);
+        console.log(`Photo size: ${photoSizeMB} MB`);
+        
+        const response = await axios.post(`${API_BASE_URL}/meals/${date}/${selectedMeal}/photo`, 
+          { photo: photoData },
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000 // 60 seconds for large photos over network
+          }
+        );
+        
+        console.log('Server response:', response.data);
+        
+        // Only update UI state after successful upload (don't save to localStorage - too big)
+        const updatedPhotos = {
+          ...mealPhotos,
+          [selectedMeal]: [...(mealPhotos[selectedMeal] || []), photoData],
+        };
+        setMealPhotos(updatedPhotos);
+        
         setNotification({
           isOpen: true,
           message: "Photo captured and uploaded!",
         });
       } catch (uploadError) {
-        console.warn("Failed to upload photo, saved locally:", uploadError);
-        setNotification({
-          isOpen: true,
-          message: "Photo saved locally (will upload when online)",
-        });
+        console.error("Failed to upload photo:", uploadError);
+        if (uploadError.response) {
+          console.error('Server error:', uploadError.response.status, uploadError.response.data);
+          setNotification({
+            isOpen: true,
+            message: `Upload failed: ${uploadError.response.status} error`,
+          });
+        } else if (uploadError.request) {
+          console.error('Network error - no response received');
+          setNotification({
+            isOpen: true,
+            message: "Network error - photo saved locally",
+          });
+        } else {
+          console.error('Error:', uploadError.message);
+          setNotification({
+            isOpen: true,
+            message: "Upload error - photo saved locally",
+          });
+        }
       }
     } catch (error) {
       if (error.message !== 'User cancelled photos app') {
@@ -302,37 +330,64 @@ export default function MealList() {
       const photo = await Camera.getPhoto({
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Photos, // Open gallery/file picker
-        quality: 80,
+        quality: 50,
         width: 800,
+        height: 800,
       });
 
       const photoData = photo.dataUrl;
+      const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('authToken');
       
-      // Add to photos array
-      const updatedPhotos = {
-        ...mealPhotos,
-        [selectedMeal]: [...(mealPhotos[selectedMeal] || []), photoData],
-      };
-      setMealPhotos(updatedPhotos);
-      
-      // Save to localStorage (device storage)
-      localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
-      
-      // Upload to server
+      // Upload to server first (before saving locally to avoid localStorage quota)
       try {
-        await axios.post(`http://localhost:4000/api/meals/${date}/${selectedMeal}/photo`, {
-          photo: photoData,
-        });
+        const photoSizeMB = (photoData.length / (1024 * 1024)).toFixed(2);
+        console.log(`Uploading photo (gallery) for ${selectedMeal}, user: ${userId}`);
+        console.log(`Token exists: ${!!token}`);
+        console.log(`Photo size: ${photoSizeMB} MB`);
+        
+        const response = await axios.post(`${API_BASE_URL}/meals/${date}/${selectedMeal}/photo`, 
+          { photo: photoData },
+          { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60000 // 60 seconds for large photos over network
+          }
+        );
+        
+        console.log('Server response:', response.data);
+        
+        // Only update UI state after successful upload (don't save to localStorage - too big)
+        const updatedPhotos = {
+          ...mealPhotos,
+          [selectedMeal]: [...(mealPhotos[selectedMeal] || []), photoData],
+        };
+        setMealPhotos(updatedPhotos);
+        
         setNotification({
           isOpen: true,
           message: "Photo uploaded successfully!",
         });
       } catch (uploadError) {
-        console.warn("Failed to upload photo, saved locally:", uploadError);
-        setNotification({
-          isOpen: true,
-          message: "Photo saved locally (will upload when online)",
-        });
+        console.error("Failed to upload photo:", uploadError);
+        if (uploadError.response) {
+          console.error('Server error:', uploadError.response.status, uploadError.response.data);
+          setNotification({
+            isOpen: true,
+            message: `Upload failed: ${uploadError.response.status} error`,
+          });
+        } else if (uploadError.request) {
+          console.error('Network error - no response received');
+          setNotification({
+            isOpen: true,
+            message: "Network error - photo saved locally",
+          });
+        } else {
+          console.error('Error:', uploadError.message);
+          setNotification({
+            isOpen: true,
+            message: "Upload error - photo saved locally",
+          });
+        }
       }
     } catch (error) {
       console.error("Error uploading photo:", error);
@@ -352,11 +407,20 @@ export default function MealList() {
       }
     }
     setMealPhotos(updatedPhotos);
-    localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
     
-    // Delete from server (send the photo index or data)
-    axios.delete(`${API_BASE_URL}/meals/${date}/${selectedMeal}/photo/${photoIndex}`)
-      .catch(err => console.warn("Failed to delete photo from server:", err));
+    // Delete from server with auth (no localStorage - too big for photos)
+    const token = localStorage.getItem('authToken');
+    console.log(`Deleting photo ${photoIndex} for ${selectedMeal}`);
+    axios.delete(`${API_BASE_URL}/meals/${date}/${selectedMeal}/photo/${photoIndex}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(response => console.log('Photo deleted from server:', response.data))
+      .catch(err => {
+        console.error("Failed to delete photo from server:", err);
+        if (err.response) {
+          console.error('Server error:', err.response.status, err.response.data);
+        }
+      });
     
     setNotification({
       isOpen: true,

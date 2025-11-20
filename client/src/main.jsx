@@ -3,6 +3,11 @@ import { createRoot } from "react-dom/client";
 import { setupIonicReact } from "@ionic/react";
 import App from "./App";
 
+// Enable mobile debugging console (remove in production)
+if (import.meta.env.DEV || window.location.hostname !== 'localhost') {
+  import('eruda').then(eruda => eruda.default.init());
+}
+
 import "@ionic/react/css/core.css";
 
 import "@ionic/react/css/normalize.css";

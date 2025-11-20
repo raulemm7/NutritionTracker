@@ -301,6 +301,13 @@ app.post("/api/meals/:date/:meal/photo", authMiddleware, (req, res) => {
   const { photo } = req.body;
   const db = readDb();
 
+  console.log(`Photo upload from user ${req.user.id} for ${meal} on ${date}`);
+  console.log(`Photo size: ${photo ? photo.length : 0} bytes`);
+
+  if (!photo) {
+    return res.status(400).json({ error: "No photo data provided" });
+  }
+
   if (!db.meals[req.user.id]) {
     db.meals[req.user.id] = {};
   }
@@ -327,14 +334,21 @@ app.post("/api/meals/:date/:meal/photo", authMiddleware, (req, res) => {
 
   // Add photo to array
   db.meals[req.user.id][date][meal].photos.push(photo);
-  writeDb(db);
+  
+  try {
+    writeDb(db);
+    console.log(`Photo saved successfully for user ${req.user.id}`);
+  } catch (error) {
+    console.error('Error writing to database:', error);
+    return res.status(500).json({ error: "Failed to save photo" });
+  }
 
   io.to(`user-${req.user.id}`).emit("meal-photo-updated", { 
     date, 
     meal, 
     photos: db.meals[req.user.id][date][meal].photos 
   });
-  res.json({ message: "Photo saved successfully" });
+  res.json({ message: "Photo saved successfully", photoCount: db.meals[req.user.id][date][meal].photos.length });
 });
 
 // DELETE meal photo by index

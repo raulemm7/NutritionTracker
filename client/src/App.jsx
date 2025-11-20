@@ -36,6 +36,8 @@ import { AuthProvider, useAuth } from "./components/Auth";
 import { NetworkStatusProvider } from "./services/networkStatus.jsx";
 import axios from "axios";
 import LocalStorageService from "./services/localStorage";
+import { API_BASE_URL } from "./config.js";
+import { cleanupOldPhotoStorage } from "./utils/cleanupStorage.js";
 
 function getDateFromPath(path) {
   const match = path.match(/\/meals\/(\d{4}-\d{2}-\d{2})/);
@@ -64,6 +66,9 @@ function AppContent() {
 
   // Effect: Load and cache foods on mount
   useEffect(() => {
+    // Cleanup old photo storage once on app load
+    cleanupOldPhotoStorage();
+    
     const loadFoods = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/foods`);

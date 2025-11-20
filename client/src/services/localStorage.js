@@ -107,10 +107,32 @@ class LocalStorageService {
     const userId = this.getUserId();
     if (!userId) return;
 
-    localStorage.setItem(
-      `${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`,
-      JSON.stringify(meals),
-    );
+    try {
+      // Remove photos before saving to avoid localStorage quota issues
+      const mealsWithoutPhotos = {};
+      Object.keys(meals).forEach(date => {
+        mealsWithoutPhotos[date] = {};
+        Object.keys(meals[date]).forEach(mealType => {
+          mealsWithoutPhotos[date][mealType] = {
+            ...meals[date][mealType],
+            photos: undefined // Don't cache photos in localStorage
+          };
+        });
+      });
+      
+      localStorage.setItem(
+        `${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`,
+        JSON.stringify(mealsWithoutPhotos),
+      );
+    } catch (error) {
+      console.warn('Failed to save offline meals (quota exceeded):', error);
+      // Clear old data to make space
+      try {
+        localStorage.removeItem(`${STORAGE_KEYS.OFFLINE_MEALS}_${userId}`);
+      } catch (e) {
+        console.error('Failed to clear localStorage:', e);
+      }
+    }
   }
 
   static getOfflineMealsByDate(userId, date) {
@@ -150,8 +172,12 @@ class LocalStorageService {
       console.error("Invalid foods data:", foods);
       return;
     }
-    console.log("Caching foods:", foods.length, "items");
-    localStorage.setItem(STORAGE_KEYS.FOODS_CACHE, JSON.stringify(foods));
+    try {
+      console.log("Caching foods:", foods.length, "items");
+      localStorage.setItem(STORAGE_KEYS.FOODS_CACHE, JSON.stringify(foods));
+    } catch (error) {
+      console.warn('Failed to cache foods (quota exceeded):', error);
+    }
   }
 
   static getFoodsCache() {
