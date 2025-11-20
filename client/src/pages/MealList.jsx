@@ -21,9 +21,10 @@ import {
   IonItemOptions,
   IonItemOption,
 } from "@ionic/react";
-import { add, createOutline, checkmarkOutline, trashOutline } from "ionicons/icons";
+import { add, createOutline, checkmarkOutline, trashOutline, cameraOutline } from "ionicons/icons";
 import { io } from "socket.io-client";
 import axios from "axios";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import AddFoodModal from "../components/AddFoodModal";
 import apiService from "../services/api";
 import { useNetworkStatus } from "../services/networkStatus.jsx";
@@ -41,6 +42,7 @@ export default function MealList() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingQuantities, setEditingQuantities] = useState({});
+  const [mealPhotos, setMealPhotos] = useState({});
 
   useEffect(() => {
     const newSocket = io("http://localhost:4000");
@@ -78,14 +80,28 @@ export default function MealList() {
         
         // Initialize editing quantities
         const quantities = {};
+        const photos = {};
         Object.keys(mealsData).forEach((mealType) => {
           if (mealsData[mealType]?.foods) {
             mealsData[mealType].foods.forEach((food, idx) => {
               quantities[`${mealType}-${idx}`] = food.quantity;
             });
           }
+          // Load photos from server data
+          if (mealsData[mealType]?.photo) {
+            photos[mealType] = mealsData[mealType].photo;
+          }
         });
         setEditingQuantities(quantities);
+
+        // Load photos from localStorage (fallback/merge with server)
+        const savedPhotos = localStorage.getItem(`meal_photos_${date}`);
+        if (savedPhotos) {
+          const localPhotos = JSON.parse(savedPhotos);
+          setMealPhotos({ ...localPhotos, ...photos }); // Server photos override local
+        } else {
+          setMealPhotos(photos);
+        }
 
         if (socket) {
           socket.emit("dateChange", date);
@@ -220,6 +236,68 @@ export default function MealList() {
     }
   };
 
+  const takeMealPhoto = async () => {
+    try {
+      const photo = await Camera.getPhoto({
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        quality: 80,
+        width: 800,
+      });
+
+      const photoData = photo.dataUrl;
+      
+      // Save to state
+      const updatedPhotos = {
+        ...mealPhotos,
+        [selectedMeal]: photoData,
+      };
+      setMealPhotos(updatedPhotos);
+      
+      // Save to localStorage (device storage)
+      localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
+      
+      // Upload to server
+      try {
+        await axios.post(`http://localhost:4000/api/meals/${date}/${selectedMeal}/photo`, {
+          photo: photoData,
+        });
+        setNotification({
+          isOpen: true,
+          message: "Photo uploaded successfully!",
+        });
+      } catch (uploadError) {
+        console.warn("Failed to upload photo, saved locally:", uploadError);
+        setNotification({
+          isOpen: true,
+          message: "Photo saved locally (will upload when online)",
+        });
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to take photo.",
+      });
+    }
+  };
+
+  const deleteMealPhoto = () => {
+    const updatedPhotos = { ...mealPhotos };
+    delete updatedPhotos[selectedMeal];
+    setMealPhotos(updatedPhotos);
+    localStorage.setItem(`meal_photos_${date}`, JSON.stringify(updatedPhotos));
+    
+    // Delete from server
+    axios.delete(`http://localhost:4000/api/meals/${date}/${selectedMeal}/photo`)
+      .catch(err => console.warn("Failed to delete photo from server:", err));
+    
+    setNotification({
+      isOpen: true,
+      message: "Photo deleted",
+    });
+  };
+
   return (
     <>
       <IonContent>
@@ -307,6 +385,67 @@ export default function MealList() {
                 </IonNote>
               )}
             </div>
+
+            {/* Meal Photo Section */}
+            {mealPhotos[selectedMeal] && (
+              <div style={{ 
+                marginBottom: 16, 
+                position: 'relative',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}>
+                <img 
+                  src={mealPhotos[selectedMeal]} 
+                  alt={`${selectedMeal} photo`}
+                  style={{ 
+                    width: '100%', 
+                    maxHeight: '300px', 
+                    objectFit: 'cover',
+                    display: 'block'
+                  }}
+                />
+                {isEditMode && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    display: 'flex',
+                    gap: '8px'
+                  }}>
+                    <IonButton
+                      fill="solid"
+                      color="primary"
+                      size="small"
+                      onClick={takeMealPhoto}
+                    >
+                      Retake
+                    </IonButton>
+                    <IonButton
+                      fill="solid"
+                      color="danger"
+                      size="small"
+                      onClick={deleteMealPhoto}
+                    >
+                      Delete
+                    </IonButton>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Camera Button in Edit Mode */}
+            {isEditMode && !mealPhotos[selectedMeal] && (
+              <IonButton
+                expand="block"
+                fill="outline"
+                onClick={takeMealPhoto}
+                style={{ marginBottom: 16 }}
+              >
+                <IonIcon slot="start" icon={cameraOutline} />
+                Take Photo of {selectedMeal}
+              </IonButton>
+            )}
+
             {!foods || foods.length === 0 ? (
               <IonNote>No foods added</IonNote>
             ) : (
