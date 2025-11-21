@@ -372,6 +372,56 @@ app.delete("/api/meals/:date/:meal/photo/:photoIndex", authMiddleware, (req, res
   res.json({ message: "Photo deleted successfully" });
 });
 
+// POST save meal location
+app.post("/api/meals/:date/:meal/location", authMiddleware, (req, res) => {
+  const { date, meal } = req.params;
+  const { location } = req.body;
+  const db = readDb();
+
+  console.log(`Location save from user ${req.user.id} for ${meal} on ${date}`);
+
+  if (!location || !location.latitude || !location.longitude) {
+    return res.status(400).json({ error: "Invalid location data" });
+  }
+
+  if (!db.meals[req.user.id]) {
+    db.meals[req.user.id] = {};
+  }
+  
+  if (!db.meals[req.user.id][date]) {
+    db.meals[req.user.id][date] = {
+      breakfast: { time: "07:00", foods: [] },
+      lunch: { time: "12:00", foods: [] },
+      dinner: { time: "19:00", foods: [] },
+    };
+  }
+
+  if (!db.meals[req.user.id][date][meal]) {
+    db.meals[req.user.id][date][meal] = {
+      time: new Date().toLocaleTimeString("en-US", { hour12: false }),
+      foods: [],
+    };
+  }
+
+  // Save location
+  db.meals[req.user.id][date][meal].location = location;
+  
+  try {
+    writeDb(db);
+    console.log(`Location saved successfully for user ${req.user.id}`);
+  } catch (error) {
+    console.error('Error writing to database:', error);
+    return res.status(500).json({ error: "Failed to save location" });
+  }
+
+  io.to(`user-${req.user.id}`).emit("meal-location-updated", { 
+    date, 
+    meal, 
+    location 
+  });
+  res.json({ message: "Location saved successfully", location });
+});
+
 // (welcome message is emitted from the main connection handler)
 
 const PORT = process.env.PORT || 4000;

@@ -57,3 +57,22 @@ ion-item {
   white-space: nowrap;
   max-width: 100%;
 }
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
+
+ion-modal .leaflet-container {
+  z-index: 1;
+}
+
+/* Fix for Leaflet in Ionic Modal */
+ion-content.ion-no-padding {
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+}

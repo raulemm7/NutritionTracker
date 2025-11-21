@@ -22,7 +22,7 @@ import {
   IonItemOption,
   IonAlert,
 } from "@ionic/react";
-import { add, createOutline, checkmarkOutline, trashOutline, cameraOutline, downloadOutline } from "ionicons/icons";
+import { add, createOutline, checkmarkOutline, trashOutline, cameraOutline, downloadOutline, mapOutline, locationOutline } from "ionicons/icons";
 import { io } from "socket.io-client";
 import axios from "axios";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
@@ -30,6 +30,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { API_BASE_URL, SOCKET_URL } from "../config";
 import AddFoodModal from "../components/AddFoodModal";
+import MealLocationMap from "../components/MealLocationMap";
 import apiService from "../services/api";
 import { useNetworkStatus } from "../services/networkStatus.jsx";
 
@@ -47,10 +48,15 @@ export default function MealList() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingQuantities, setEditingQuantities] = useState({});
   const [mealPhotos, setMealPhotos] = useState({}); // Now stores arrays of photos per meal
+  const [mealLocations, setMealLocations] = useState({}); // Stores location for each meal
   const [savePhotoAlert, setSavePhotoAlert] = useState({
     isOpen: false,
     photoData: null,
     photoIndex: null,
+  });
+  const [mapModal, setMapModal] = useState({
+    isOpen: false,
+    viewOnly: false,
   });
 
   useEffect(() => {
@@ -79,12 +85,24 @@ export default function MealList() {
       }
     };
 
+    const handleMealLocationUpdated = (data) => {
+      console.log('Location updated via socket:', data);
+      if (data.date === date) {
+        setMealLocations(prev => ({
+          ...prev,
+          [data.meal]: data.location
+        }));
+      }
+    };
+
     newSocket.on("userDateChanged", handleUserDateChanged);
     newSocket.on("meal-photo-updated", handleMealPhotoUpdated);
+    newSocket.on("meal-location-updated", handleMealLocationUpdated);
 
     return () => {
       newSocket.off("userDateChanged", handleUserDateChanged);
       newSocket.off("meal-photo-updated", handleMealPhotoUpdated);
+      newSocket.off("meal-location-updated", handleMealLocationUpdated);
       newSocket.disconnect();
     };
   }, [date]);
@@ -105,6 +123,7 @@ export default function MealList() {
         // Initialize editing quantities
         const quantities = {};
         const photos = {};
+        const locations = {};
         Object.keys(mealsData).forEach((mealType) => {
           if (mealsData[mealType]?.foods) {
             mealsData[mealType].foods.forEach((food, idx) => {
@@ -115,11 +134,16 @@ export default function MealList() {
           if (mealsData[mealType]?.photos && Array.isArray(mealsData[mealType].photos)) {
             photos[mealType] = mealsData[mealType].photos;
           }
+          // Load location from server data
+          if (mealsData[mealType]?.location) {
+            locations[mealType] = mealsData[mealType].location;
+          }
         });
         setEditingQuantities(quantities);
 
         // Photos now come only from server (localStorage too limited for images)
         setMealPhotos(photos);
+        setMealLocations(locations);
 
         if (socket) {
           socket.emit("dateChange", date);
@@ -506,6 +530,41 @@ export default function MealList() {
     }
   };
 
+  const handleSaveLocation = async (locationData) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      await axios.post(
+        `${API_BASE_URL}/meals/${date}/${selectedMeal}/location`,
+        { location: locationData },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMealLocations(prev => ({
+        ...prev,
+        [selectedMeal]: locationData
+      }));
+
+      setNotification({
+        isOpen: true,
+        message: "Location saved!",
+      });
+    } catch (error) {
+      console.error('Error saving location:', error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to save location",
+      });
+    }
+  };
+
+  const openMapForEdit = () => {
+    setMapModal({ isOpen: true, viewOnly: false });
+  };
+
+  const openMapForView = () => {
+    setMapModal({ isOpen: true, viewOnly: true });
+  };
+
   return (
     <>
       <IonContent>
@@ -695,6 +754,63 @@ export default function MealList() {
               </div>
             )}
 
+            {/* Meal Location Section */}
+            {mealLocations[selectedMeal] && (
+              <div style={{ 
+                marginBottom: 16,
+                padding: '12px',
+                background: 'var(--ion-color-light)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+                    <IonIcon icon={locationOutline} style={{ marginRight: '8px', color: 'var(--ion-color-primary)' }} />
+                    <strong>Location Saved</strong>
+                  </div>
+                  <IonNote style={{ fontSize: '0.85rem' }}>
+                    {mealLocations[selectedMeal].address}
+                  </IonNote>
+                </div>
+                <IonButton
+                  size="small"
+                  fill="clear"
+                  onClick={openMapForView}
+                >
+                  <IonIcon icon={mapOutline} />
+                </IonButton>
+              </div>
+            )}
+
+            {/* Set Location Button in Edit Mode */}
+            {isEditMode && !mealLocations[selectedMeal] && (
+              <IonButton
+                expand="block"
+                fill="outline"
+                onClick={openMapForEdit}
+                style={{ marginBottom: 16 }}
+              >
+                <IonIcon slot="start" icon={mapOutline} />
+                Set Meal Location
+              </IonButton>
+            )}
+
+            {/* Edit Location in Edit Mode */}
+            {isEditMode && mealLocations[selectedMeal] && (
+              <IonButton
+                expand="block"
+                fill="outline"
+                color="secondary"
+                onClick={openMapForEdit}
+                style={{ marginBottom: 16 }}
+              >
+                <IonIcon slot="start" icon={mapOutline} />
+                Edit Location
+              </IonButton>
+            )}
+
             {!foods || foods.length === 0 ? (
               <IonNote>No foods added</IonNote>
             ) : (
@@ -774,6 +890,14 @@ export default function MealList() {
             handler: savePhotoToGallery,
           },
         ]}
+      />
+
+      <MealLocationMap
+        isOpen={mapModal.isOpen}
+        onClose={() => setMapModal({ isOpen: false, viewOnly: false })}
+        onSave={handleSaveLocation}
+        initialLocation={mealLocations[selectedMeal]}
+        viewOnly={mapModal.viewOnly}
       />
     </IonContent>
     </>
