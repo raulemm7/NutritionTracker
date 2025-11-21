@@ -662,7 +662,7 @@ export default function MealList() {
                   gap: '8px',
                 }}>
                   {mealPhotos[selectedMeal].map((photo, idx) => (
-                    <div key={idx} style={{ 
+                    <div key={idx} className="photo-item" style={{ 
                       position: 'relative',
                       borderRadius: '8px',
                       overflow: 'hidden',
@@ -756,7 +756,7 @@ export default function MealList() {
 
             {/* Meal Location Section */}
             {mealLocations[selectedMeal] && (
-              <div style={{ 
+              <div className="location-badge" style={{ 
                 marginBottom: 16,
                 padding: '12px',
                 background: 'var(--ion-color-light)',
@@ -820,7 +820,7 @@ export default function MealList() {
                 </IonBadge>
                 <IonList lines="none">
                   {foods.map((food, idx) => (
-                    <IonItemSliding key={idx} disabled={!isEditMode}>
+                    <IonItemSliding key={idx} disabled={!isEditMode} className="food-item">
                       <IonItem>
                         <IonLabel>
                           {food.name}

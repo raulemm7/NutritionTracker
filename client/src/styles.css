@@ -76,3 +76,207 @@ ion-content.ion-no-padding {
   --padding-start: 0;
   --padding-end: 0;
 }
+
+/* ==========================================
+   🎨 CUSTOM ANIMATIONS - NEW (1p)
+   ========================================== */
+
+/* Fade in + Scale animation for photo gallery */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.photo-item {
+  animation: fadeInScale 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+/* Stagger photo items */
+.photo-item:nth-child(1) { animation-delay: 0.05s; }
+.photo-item:nth-child(2) { animation-delay: 0.1s; }
+.photo-item:nth-child(3) { animation-delay: 0.15s; }
+.photo-item:nth-child(4) { animation-delay: 0.2s; }
+.photo-item:nth-child(5) { animation-delay: 0.25s; }
+.photo-item:nth-child(6) { animation-delay: 0.3s; }
+
+/* Slide up animation for food items */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.food-item {
+  animation: slideUpFade 0.3s ease-out;
+  animation-fill-mode: both;
+}
+
+/* Stagger food items */
+.food-item:nth-child(1) { animation-delay: 0.05s; }
+.food-item:nth-child(2) { animation-delay: 0.1s; }
+.food-item:nth-child(3) { animation-delay: 0.15s; }
+.food-item:nth-child(4) { animation-delay: 0.2s; }
+.food-item:nth-child(5) { animation-delay: 0.25s; }
+
+/* Pulse animation for FAB button */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--ion-color-primary-rgb), 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(var(--ion-color-primary-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--ion-color-primary-rgb), 0);
+  }
+}
+
+ion-fab-button {
+  animation: pulse 2s infinite;
+}
+
+/* Bounce animation for location badge */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.location-badge {
+  animation: bounce 1s ease-in-out;
+}
+
+/* Shimmer effect for loading skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+ion-skeleton-text {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ==========================================
+   🎨 OVERRIDE EXISTING ANIMATIONS (1p)
+   ========================================== */
+
+/* Override Ionic Modal transition */
+ion-modal {
+  --backdrop-opacity: 0.6;
+  --width: 100%;
+  --height: 100%;
+}
+
+ion-modal::part(content) {
+  animation: modalSlideUp 0.4s cubic-bezier(0.36, 0.66, 0.04, 1);
+}
+
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Override IonCard entrance animation */
+ion-card {
+  animation: cardPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation-fill-mode: both;
+}
+
+@keyframes cardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Stagger card animations */
+ion-card:nth-child(1) { animation-delay: 0.05s; }
+ion-card:nth-child(2) { animation-delay: 0.1s; }
+ion-card:nth-child(3) { animation-delay: 0.15s; }
+
+/* Override IonButton ripple with custom color and slower animation */
+ion-button {
+  --ripple-color: rgba(var(--ion-color-primary-rgb), 0.3);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+ion-button:active {
+  transform: scale(0.96);
+}
+
+/* Custom hover effect for buttons (web) */
+@media (hover: hover) {
+  ion-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Override segment button transitions */
+ion-segment-button {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+ion-segment-button::part(indicator-background) {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth color transitions for items */
+ion-item {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+ion-item:active {
+  transform: scale(0.98);
+}
+
+/* Override toast entrance */
+ion-toast {
+  --background: rgba(0, 0, 0, 0.9);
+}
+
+ion-toast::part(container) {
+  animation: toastSlideIn 0.3s cubic-bezier(0.36, 0.66, 0.04, 1);
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
